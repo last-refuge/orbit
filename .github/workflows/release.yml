@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libvulkan-dev \
+            libfontconfig-dev libfreetype-dev libzstd-dev mesa-vulkan-drivers
+
+      - name: Toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tag matches the workspace version
+        run: |
+          tag=${GITHUB_REF_NAME#v}
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          [ "$tag" = "$version" ] || { echo "tag v$tag but Cargo.toml says $version" >&2; exit 1; }
+
+      - name: Test
+        run: cargo test --locked --workspace
+
+      - name: Build
+        run: cargo build --locked --release
+
+      - name: Package
+        id: package
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          arch=$(uname -m)
+          name=orbit-$version-$arch-unknown-linux-gnu
+          mkdir -p "dist/$name"
+          cp target/release/orbit "dist/$name/"
+          "target/release/orbit" assets install "dist/$name/share" >/dev/null
+          cp README.md CHANGELOG.md "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from CHANGELOG
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > dist/notes.md
+          test -s dist/notes.md || echo "Release $GITHUB_REF_NAME" > dist/notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: dist/notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/${{ steps.package.outputs.name }}.tar.gz
+            dist/${{ steps.package.outputs.name }}.tar.gz.sha256

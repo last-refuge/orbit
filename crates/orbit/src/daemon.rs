@@ -735,7 +735,10 @@ impl Overlay {
             })?;
         self.opens += 1;
         self.window = Some((handle, output));
-        self.surface = Some(((f32::from(size.width), f32::from(size.height)), from_hyprland));
+        self.surface = Some((
+            (f32::from(size.width), f32::from(size.height)),
+            from_hyprland,
+        ));
         Ok(())
     }
 
@@ -1283,7 +1286,10 @@ mod tests {
         );
         assert_eq!(request.encode(), "show HDMI-A-1");
         assert_eq!(size, None);
-        assert_eq!(resolve_output_in(Request::Hide, Some(&monitors)), (Request::Hide, None));
+        assert_eq!(
+            resolve_output_in(Request::Hide, Some(&monitors)),
+            (Request::Hide, None)
+        );
         assert_eq!(resolve_output_in(corner.clone(), None).1, None);
     }
 

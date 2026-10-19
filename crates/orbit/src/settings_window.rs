@@ -8,8 +8,7 @@ use std::time::Duration;
 
 use gpui::{
     App, Context, FocusHandle, FontWeight, KeyBinding, KeyDownEvent, ObjectFit, Role, SharedString,
-    Window,
-    actions, div, img, prelude::*, px,
+    Window, actions, div, img, prelude::*, px,
 };
 use orbit_core::{
     Settings,

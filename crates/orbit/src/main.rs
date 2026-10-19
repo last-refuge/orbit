@@ -9,6 +9,7 @@
 //! overview slice with `state`/`drive` for scripted checks (ORB-006).
 //! `demo` arrives with M1.
 
+mod assets;
 mod backdrop;
 mod capture;
 mod corner;
@@ -30,6 +31,7 @@ usage: orbit daemon [--test-hooks] [--high-contrast] [--opaque] [--glass|--no-gl
        orbit show|toggle [--output NAME]
        orbit hide|status|state|settings|quit
        orbit config list|path|get KEY|set KEY VALUE
+       orbit assets install|remove [DIR]
        orbit drive key K[,K…] | type TEXT | compose TEXT | commit TEXT | click 0xADDR
                    | click-workspace NAME | click-search | drag 0xADDR NAME [follow] | a11y
        orbit smoke [--overlay] [--exit-after-ms N]
@@ -53,6 +55,8 @@ usage: orbit daemon [--test-hooks] [--high-contrast] [--opaque] [--glass|--no-gl
   settings           open the Orbit settings window
   config             read or change settings in $XDG_CONFIG_HOME/orbit/config.toml
                      (the running daemon applies changes within a second)
+  assets             write (or remove) the desktop entry and icon-theme files under DIR
+                     (default $XDG_DATA_HOME or ~/.local/share); the installer uses this
   drive              send keys, text, a click or a drag through the overview's input path,
                      or summarize its accessibility tree (no labels)
   smoke              open a plain GPUI window with the Orbit theme
@@ -92,6 +96,25 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        Ok(Command::Assets { install, dir }) => {
+            let result = if install {
+                assets::install(&dir)
+            } else {
+                assets::remove(&dir)
+            };
+            match result {
+                Ok(paths) => {
+                    for path in paths {
+                        println!("{}", path.display());
+                    }
+                    ExitCode::SUCCESS
+                }
+                Err(error) => {
+                    eprintln!("orbit assets: {error}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Ok(Command::Config(action)) => match config_command(action) {
             Ok(text) => {
                 if !text.is_empty() {
@@ -156,6 +179,7 @@ fn main() -> ExitCode {
 enum Command {
     Version,
     Config(ConfigAction),
+    Assets { install: bool, dir: PathBuf },
     Daemon(daemon::Options),
     Control(daemon::Request),
     Smoke(smoke::Options),
@@ -216,6 +240,21 @@ fn parse(args: &[String]) -> Result<Command, String> {
     };
     match args.next() {
         Some("--version") => Ok(Command::Version),
+        Some("assets") => {
+            let rest: Vec<&str> = args.collect();
+            let (install, dir) = match rest.as_slice() {
+                ["install"] => (true, None),
+                ["remove"] => (false, None),
+                ["install", dir] => (true, Some(*dir)),
+                ["remove", dir] => (false, Some(*dir)),
+                _ => return Err("usage: orbit assets install|remove [DIR]".into()),
+            };
+            let dir = match dir {
+                Some(dir) => PathBuf::from(dir),
+                None => assets::default_dir().ok_or("no data directory (HOME is unset)")?,
+            };
+            Ok(Command::Assets { install, dir })
+        }
         Some("daemon") => {
             let mut options = daemon::Options::default();
             for arg in args {

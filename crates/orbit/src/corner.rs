@@ -51,7 +51,11 @@ impl SyncKey {
             return Vec::new();
         }
         match self.scope {
-            Monitors::All => self.monitors.iter().map(|(name, _)| name.as_str()).collect(),
+            Monitors::All => self
+                .monitors
+                .iter()
+                .map(|(name, _)| name.as_str())
+                .collect(),
             Monitors::Primary => self
                 .monitors
                 .iter()
@@ -305,7 +309,10 @@ mod tests {
             monitors: vec![("eDP-1".into(), true)],
             ..at_startup.clone()
         };
-        assert!(!corners.in_sync(&linked), "the monitors arriving must trigger a sync");
+        assert!(
+            !corners.in_sync(&linked),
+            "the monitors arriving must trigger a sync"
+        );
         assert_eq!(linked.wanted(), ["eDP-1"]);
 
         let two = SyncKey {

@@ -712,7 +712,11 @@ mod tests {
             key: "grave".into(),
         };
         assert_eq!(backtick.label(), "Super+Shift+`");
-        assert_eq!(backtick.lua_keys(), "SUPER+SHIFT+grave", "the bind keeps the keysym");
+        assert_eq!(
+            backtick.lua_keys(),
+            "SUPER+SHIFT+grave",
+            "the bind keeps the keysym"
+        );
         let bad = Shortcut {
             mods: vec!["HYPER".into()],
             key: "a".into(),

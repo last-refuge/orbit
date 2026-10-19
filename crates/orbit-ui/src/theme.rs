@@ -403,6 +403,16 @@ pub const BRAND_SYMBOL_PNG: &[u8] = include_bytes!("../assets/brand/orbit-symbol
 pub const BRAND_LOCKUP_PNG: &[u8] = include_bytes!("../assets/brand/orbit-logo-dark.png");
 pub const BRAND_APP_ICON_PNG: &[u8] = include_bytes!("../assets/brand/orbit-app-icon.png");
 
+/// The application icon (the symbol on its midnight tile) encoded as a
+/// PNG of `size` px, for the desktop entry's icon theme.
+pub fn app_icon_png(size: u32) -> Option<Vec<u8>> {
+    let full = image::load_from_memory(BRAND_APP_ICON_PNG).ok()?;
+    let icon = full.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
+    let mut out = std::io::Cursor::new(Vec::new());
+    icon.write_to(&mut out, image::ImageFormat::Png).ok()?;
+    Some(out.into_inner())
+}
+
 /// The symbol at the size the app draws it (the overview's 48 px lockup is
 /// 60 device px at 1.25), decoded and downscaled once.
 pub fn brand_symbol() -> Arc<Image> {
@@ -471,8 +481,9 @@ fn cut_wordmark(lockup: &[u8], hex: u32) -> Option<(Vec<u8>, f32)> {
     let opaque_row = |y: u32| (word_left..word_right).any(|x| rgba.get_pixel(x, y)[3] > 8);
     let top = (0..height).find(|y| opaque_row(*y))?;
     let bottom = (0..height).rev().find(|y| opaque_row(*y))? + 1;
-    let mut word = image::imageops::crop_imm(&rgba, word_left, top, word_right - word_left, bottom - top)
-        .to_image();
+    let mut word =
+        image::imageops::crop_imm(&rgba, word_left, top, word_right - word_left, bottom - top)
+            .to_image();
     let [r, g, b] = [(hex >> 16) as u8, (hex >> 8) as u8, hex as u8];
     for pixel in word.pixels_mut() {
         pixel.0 = [r, g, b, pixel[3]];
@@ -617,9 +628,16 @@ mod brand_tests {
     #[test]
     fn the_wordmark_is_cut_from_the_lockup_and_tinted() {
         let (png, aspect) = cut_wordmark(BRAND_LOCKUP_PNG, 0xFFFFFF).expect("lockup readable");
-        assert!(aspect > 2.5 && aspect < 4.0, "Orbit is a wide word: {aspect}");
+        assert!(
+            aspect > 2.5 && aspect < 4.0,
+            "Orbit is a wide word: {aspect}"
+        );
         let word = image::load_from_memory(&png).unwrap().to_rgba8();
-        assert!(word.width() > 500 && word.height() > 150, "{:?}", word.dimensions());
+        assert!(
+            word.width() > 500 && word.height() > 150,
+            "{:?}",
+            word.dimensions()
+        );
         // Every visible pixel is the tint; the edges keep their alpha.
         let mut partial = 0;
         for p in word.pixels() {
