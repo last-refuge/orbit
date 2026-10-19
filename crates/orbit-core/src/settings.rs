@@ -430,6 +430,82 @@ pub struct Startup {
     pub launch_at_login: bool,
 }
 
+/// Which releases to offer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum UpdateChannel {
+    /// Every release, pre-releases included (the default while 0.x).
+    #[default]
+    Prerelease,
+    /// Only releases not marked pre-release.
+    Stable,
+}
+
+impl UpdateChannel {
+    pub const ALL: [UpdateChannel; 2] = [UpdateChannel::Prerelease, UpdateChannel::Stable];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            UpdateChannel::Prerelease => "Pre-releases",
+            UpdateChannel::Stable => "Stable only",
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            UpdateChannel::Prerelease => "prerelease",
+            UpdateChannel::Stable => "stable",
+        }
+    }
+}
+
+/// What happens when a new release is found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum UpdateMode {
+    /// Say so (the pill, the settings window, a notification); install on request.
+    #[default]
+    Notify,
+    /// Install it at a quiet moment and say what was installed.
+    Auto,
+    /// Never check.
+    Off,
+}
+
+impl UpdateMode {
+    pub const ALL: [UpdateMode; 3] = [UpdateMode::Notify, UpdateMode::Auto, UpdateMode::Off];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            UpdateMode::Notify => "Tell me",
+            UpdateMode::Auto => "Install automatically",
+            UpdateMode::Off => "Off",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Update {
+    pub mode: UpdateMode,
+    pub channel: UpdateChannel,
+    /// Hours between checks of GitHub's releases list (1–168).
+    pub check_interval_hours: u32,
+    /// A desktop notification when a new version is first seen.
+    pub notify: bool,
+}
+
+impl Default for Update {
+    fn default() -> Self {
+        Self {
+            mode: UpdateMode::Notify,
+            channel: UpdateChannel::Prerelease,
+            check_interval_hours: 6,
+            notify: true,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Settings {
@@ -441,6 +517,7 @@ pub struct Settings {
     pub previews: Previews,
     pub icons: Icons,
     pub startup: Startup,
+    pub update: Update,
 }
 
 impl Settings {
@@ -492,6 +569,9 @@ impl Settings {
         }
         if !(100..=5000).contains(&self.previews.refresh_ms) {
             return Err("previews.refresh_ms must be 100–5000".into());
+        }
+        if !(1..=168).contains(&self.update.check_interval_hours) {
+            return Err("update.check_interval_hours must be 1–168".into());
         }
         Ok(())
     }

@@ -23,6 +23,7 @@ mod preview;
 mod previews;
 mod settings_window;
 mod smoke;
+mod updates;
 
 use std::{path::PathBuf, process::ExitCode, time::Duration};
 
@@ -32,6 +33,7 @@ usage: orbit daemon [--test-hooks] [--high-contrast] [--opaque] [--glass|--no-gl
        orbit hide|status|state|settings|quit
        orbit config list|path|get KEY|set KEY VALUE
        orbit assets install|remove [DIR]
+       orbit update check|notes|apply [--version vX.Y.Z]|rollback|skip
        orbit drive key K[,K…] | type TEXT | compose TEXT | commit TEXT | click 0xADDR
                    | click-workspace NAME | click-search | drag 0xADDR NAME [follow] | a11y
        orbit smoke [--overlay] [--exit-after-ms N]
@@ -57,6 +59,8 @@ usage: orbit daemon [--test-hooks] [--high-contrast] [--opaque] [--glass|--no-gl
                      (the running daemon applies changes within a second)
   assets             write (or remove) the desktop entry and icon-theme files under DIR
                      (default $XDG_DATA_HOME or ~/.local/share); the installer uses this
+  update             check GitHub for a newer release, show its notes, install it in place
+                     (the running daemon restarts on it) or go back to the previous binary
   drive              send keys, text, a click or a drag through the overview's input path,
                      or summarize its accessibility tree (no labels)
   smoke              open a plain GPUI window with the Orbit theme
@@ -82,17 +86,32 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match parse(&args) {
         Ok(Command::Version) => {
-            println!("orbit {}", env!("CARGO_PKG_VERSION"));
+            println!("orbit {}", updates::current());
             ExitCode::SUCCESS
         }
         Ok(Command::Smoke(options)) => {
             smoke::run(options);
             ExitCode::SUCCESS
         }
-        Ok(Command::Daemon(options)) => match daemon::run(options) {
-            Ok(()) => ExitCode::SUCCESS,
+        Ok(Command::Daemon(options)) => {
+            updates::guard_start(options.after_update.as_deref());
+            match daemon::run(options) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(error) => {
+                    eprintln!("orbit daemon: {error:#}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
+        Ok(Command::Update(args)) => match updates::cli(&args) {
+            Ok(text) => {
+                if !text.is_empty() {
+                    println!("{text}");
+                }
+                ExitCode::SUCCESS
+            }
             Err(error) => {
-                eprintln!("orbit daemon: {error:#}");
+                eprintln!("orbit update: {error}");
                 ExitCode::FAILURE
             }
         },
@@ -180,6 +199,7 @@ enum Command {
     Version,
     Config(ConfigAction),
     Assets { install: bool, dir: PathBuf },
+    Update(Vec<String>),
     Daemon(daemon::Options),
     Control(daemon::Request),
     Smoke(smoke::Options),
@@ -240,6 +260,7 @@ fn parse(args: &[String]) -> Result<Command, String> {
     };
     match args.next() {
         Some("--version") => Ok(Command::Version),
+        Some("update") => Ok(Command::Update(args.map(str::to_owned).collect())),
         Some("assets") => {
             let rest: Vec<&str> = args.collect();
             let (install, dir) = match rest.as_slice() {
@@ -257,8 +278,16 @@ fn parse(args: &[String]) -> Result<Command, String> {
         }
         Some("daemon") => {
             let mut options = daemon::Options::default();
-            for arg in args {
+            let mut args = args.peekable();
+            while let Some(arg) = args.next() {
                 match arg {
+                    "--after-update" => {
+                        options.after_update = Some(
+                            args.next()
+                                .ok_or("--after-update needs the previous version")?
+                                .to_owned(),
+                        )
+                    }
                     "--test-hooks" => options.test_hooks = true,
                     "--high-contrast" => options.high_contrast = true,
                     "--reduced-motion" => options.reduced_motion = true,

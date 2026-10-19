@@ -398,6 +398,19 @@ mod tests {
     }
 }
 
+/// What the overview's update pill says (ORB-011), set by the daemon.
+/// Empty text means no pill.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UpdateBadge {
+    pub text: gpui::SharedString,
+    /// The tooltip.
+    pub detail: gpui::SharedString,
+    /// A failed update that was rolled back: shown in the error colour.
+    pub failed: bool,
+}
+
+impl gpui::Global for UpdateBadge {}
+
 /// Jason's brand files (`crates/orbit-ui/assets/brand/`, see its README).
 pub const BRAND_SYMBOL_PNG: &[u8] = include_bytes!("../assets/brand/orbit-symbol.png");
 pub const BRAND_LOCKUP_PNG: &[u8] = include_bytes!("../assets/brand/orbit-logo-dark.png");

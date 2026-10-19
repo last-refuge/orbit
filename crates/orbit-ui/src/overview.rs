@@ -39,7 +39,7 @@ use orbit_core::{Card, Dest, Intent, Model, Region, Tile, Tone};
 
 use crate::{
     desk::{Desk, Link, PreviewBoxes},
-    theme::{self, Look, Theme, Token},
+    theme::{self, Look, Theme, Token, UpdateBadge},
 };
 
 actions!(
@@ -482,6 +482,8 @@ impl OverviewView {
     ) -> Self {
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
+        cx.observe_global::<UpdateBadge>(|_, cx| cx.notify())
+            .detach();
         let observe = cx.observe_in(&desk, window, |this, desk, window, cx| {
             if desk.update(cx, |desk, _| desk.take_dismiss()) {
                 // A committed activation (the shortcut's double tap): the
@@ -2346,6 +2348,60 @@ impl Render for OverviewView {
                 )
             });
 
+        // The update pill, right of the lockup: "0.1.1 available" (or what
+        // just happened). Click opens the settings. Hidden on an output too
+        // narrow to keep it clear of the search field.
+        let badge = cx.try_global::<UpdateBadge>().cloned().unwrap_or_default();
+        let wordmark_w = look
+            .wordmark
+            .as_ref()
+            .map(|(_, aspect)| (WORDMARK_SIZE * aspect).round())
+            .unwrap_or(72.);
+        let pill_left = m.grid.x + MARK_SIZE + MARK_GAP + wordmark_w + 20.;
+        let pill_w = 24. + badge.text.len() as f32 * 7.6;
+        let update_pill =
+            (!badge.text.is_empty() && pill_left + pill_w < m.search.x - 12.).then(|| {
+                let failed = badge.failed;
+                let label: SharedString = format!("{}. {}", badge.text, badge.detail).into();
+                div()
+                    .id("update-pill")
+                    .role(Role::Button)
+                    .aria_label(label)
+                    .absolute()
+                    .left(px(pill_left))
+                    .top(px(PAD_TOP + (SEARCH_HEIGHT - 28.) / 2.))
+                    .h(px(28.))
+                    .px(px(12.))
+                    .rounded_full()
+                    .bg(if failed {
+                        t.error.alpha(0.18)
+                    } else {
+                        t.selection.alpha(0.22)
+                    })
+                    .border(hair(m))
+                    .border_color(if failed {
+                        t.error.alpha(0.6)
+                    } else {
+                        t.selection.alpha(0.6)
+                    })
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .text_size(px(13.))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(t.strong.rgba())
+                    .cursor_pointer()
+                    .child(div().size(px(8.)).rounded_full().bg(if failed {
+                        t.error.rgba()
+                    } else {
+                        t.selection.rgba()
+                    }))
+                    .child(badge.text.clone())
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.open_settings(&OpenSettings, window, cx);
+                    }))
+            });
+
         // The glass: the frosted capture (or a solid), under the theme's
         // tint, with the lit top edge; nothing of the live desktop shows.
         let surface = div()
@@ -2429,6 +2485,7 @@ impl Render for OverviewView {
             .text_color(t.text.rgba())
             .child(surface)
             .child(mark)
+            .children(update_pill)
             .child(self.search_field(
                 t,
                 m,

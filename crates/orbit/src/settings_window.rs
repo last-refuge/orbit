@@ -14,11 +14,12 @@ use orbit_core::{
     Settings,
     settings::{
         Columns, Corner, Monitors, RailPosition, SearchScope, Shortcut, ThemeChoice, Titles,
+        UpdateChannel, UpdateMode,
     },
 };
 use orbit_ui::theme::{self, Look, Theme};
 
-use crate::{daemon, prefs::Prefs};
+use crate::{daemon, prefs::Prefs, updates::UpdateStatus};
 
 actions!(
     orbit_settings,
@@ -71,6 +72,15 @@ enum Key {
     NeverCapture,
     IconTheme,
     LaunchAtLogin,
+    UpdateStatus,
+    UpdateMode,
+    UpdateChannel,
+    UpdateInterval,
+    UpdateNotify,
+    UpdateCheck,
+    UpdateApply,
+    UpdateSkip,
+    UpdateNotes,
     AddInclude,
     Reset,
     Close,
@@ -119,6 +129,8 @@ impl SettingsView {
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
         cx.observe_global::<Prefs>(|_, cx| cx.notify()).detach();
+        cx.observe_global::<UpdateStatus>(|_, cx| cx.notify())
+            .detach();
         Self {
             focus_handle,
             focused: 0,
@@ -133,6 +145,7 @@ impl SettingsView {
 
     fn rows(cx: &App) -> Vec<Row> {
         let p = cx.global::<Prefs>();
+        let u = cx.global::<UpdateStatus>();
         let s = &p.settings;
         let choice = |options: &[&'static str], index: usize| Control::Choice {
             options: options.to_vec(),
@@ -365,6 +378,102 @@ impl SettingsView {
                 control: Control::Toggle(s.startup.launch_at_login),
             },
             Row {
+                key: Key::UpdateStatus,
+                label: "Version",
+                help: update_help(u, s),
+                control: Control::Text(format!("Orbit {}", u.current)),
+            },
+            Row {
+                key: Key::UpdateCheck,
+                label: "Check for updates",
+                help: match &u.last_result {
+                    Some((text, _)) if !u.checking => text.clone(),
+                    _ if u.checking => "Asking GitHub for the releases list…".into(),
+                    _ => "Asks GitHub now, whatever the schedule says.".into(),
+                },
+                control: Control::Button(if u.checking { "Checking…" } else { "Check now" }),
+            },
+            Row {
+                key: Key::UpdateApply,
+                label: "Update now",
+                help: match (u.available(), &u.updatable) {
+                    (Some(latest), Ok(())) => format!(
+                        "Downloads {}, verifies it, swaps it in and restarts Orbit. The previous build is kept for a rollback.",
+                        latest.version
+                    ),
+                    (Some(_), Err(why)) => format!("Cannot update in place: {why}."),
+                    (None, _) => "Nothing newer is known.".into(),
+                },
+                control: Control::Button(if u.applying { "Installing…" } else { "Update" }),
+            },
+            Row {
+                key: Key::UpdateSkip,
+                label: "Skip this version",
+                help: "Stops offering the version above until a newer one appears.".into(),
+                control: Control::Button("Skip"),
+            },
+            Row {
+                key: Key::UpdateNotes,
+                label: "Release notes",
+                help: u
+                    .state
+                    .latest
+                    .as_ref()
+                    .map(|l| {
+                        let first = l.notes.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
+                        format!("{}: {}", l.tag, first.trim_start_matches('#').trim())
+                    })
+                    .unwrap_or_else(|| "Opens the release page in your browser.".into()),
+                control: Control::Button("Open"),
+            },
+            Row {
+                key: Key::UpdateMode,
+                label: "New releases",
+                help: if u.state.applied.is_some() && !u.state.auto_offered {
+                    "That update went in by hand. Pick Install automatically and Orbit will do the next one itself, at a quiet moment, and tell you afterwards."
+                        .into()
+                } else {
+                    "Tell me shows a pill in the overview and a notification; Install automatically applies them at a quiet moment and tells you afterwards."
+                        .into()
+                },
+                control: Control::Choice {
+                    options: UpdateMode::ALL.map(UpdateMode::label).to_vec(),
+                    index: UpdateMode::ALL
+                        .iter()
+                        .position(|m| *m == s.update.mode)
+                        .unwrap_or(0),
+                },
+            },
+            Row {
+                key: Key::UpdateChannel,
+                label: "Channel",
+                help: "Pre-releases are the alpha and beta builds; Stable only waits for releases not marked pre-release."
+                    .into(),
+                control: Control::Choice {
+                    options: UpdateChannel::ALL.map(UpdateChannel::label).to_vec(),
+                    index: UpdateChannel::ALL
+                        .iter()
+                        .position(|c| *c == s.update.channel)
+                        .unwrap_or(0),
+                },
+            },
+            Row {
+                key: Key::UpdateInterval,
+                label: "Check every",
+                help: "Hours between checks of GitHub's releases list (1–168). Unchanged answers cost nothing."
+                    .into(),
+                control: Control::Number {
+                    value: i64::from(s.update.check_interval_hours),
+                    unit: "h",
+                },
+            },
+            Row {
+                key: Key::UpdateNotify,
+                label: "Desktop notification",
+                help: "One notification when a new version is first seen.".into(),
+                control: Control::Toggle(s.update.notify),
+            },
+            Row {
                 key: Key::Reset,
                 label: "Reset to defaults",
                 help: "Every setting back to its default (the shortcut is picked afresh).".into(),
@@ -389,6 +498,15 @@ impl SettingsView {
             Key::Refresh | Key::CaptureInactive | Key::NeverCapture => "Previews and privacy",
             Key::IconTheme => "Icons",
             Key::LaunchAtLogin => "Startup",
+            Key::UpdateStatus
+            | Key::UpdateCheck
+            | Key::UpdateApply
+            | Key::UpdateSkip
+            | Key::UpdateNotes
+            | Key::UpdateMode
+            | Key::UpdateChannel
+            | Key::UpdateInterval
+            | Key::UpdateNotify => "Updates",
             Key::Reset | Key::Close => "",
         }
     }
@@ -481,10 +599,40 @@ impl SettingsView {
                 s.previews.capture_inactive_workspaces = !s.previews.capture_inactive_workspaces
             }
             Key::LaunchAtLogin => s.startup.launch_at_login = !s.startup.launch_at_login,
+            Key::UpdateMode => {
+                let i = UpdateMode::ALL
+                    .iter()
+                    .position(|m| *m == s.update.mode)
+                    .unwrap_or(0);
+                s.update.mode = UpdateMode::ALL[cycle(i, UpdateMode::ALL.len())];
+                // The one-time offer has been answered either way.
+                let status = cx.global_mut::<UpdateStatus>();
+                if !status.state.auto_offered {
+                    status.state.auto_offered = true;
+                    let _ = status.state.save();
+                }
+            }
+            Key::UpdateChannel => {
+                let i = UpdateChannel::ALL
+                    .iter()
+                    .position(|c| *c == s.update.channel)
+                    .unwrap_or(0);
+                s.update.channel = UpdateChannel::ALL[cycle(i, UpdateChannel::ALL.len())];
+            }
+            Key::UpdateInterval => {
+                s.update.check_interval_hours =
+                    (i64::from(s.update.check_interval_hours) + delta).clamp(1, 168) as u32
+            }
+            Key::UpdateNotify => s.update.notify = !s.update.notify,
             Key::Shortcut
             | Key::NeverCapture
             | Key::IconTheme
             | Key::AddInclude
+            | Key::UpdateStatus
+            | Key::UpdateCheck
+            | Key::UpdateApply
+            | Key::UpdateSkip
+            | Key::UpdateNotes
             | Key::Reset
             | Key::Close => return,
         }
@@ -531,6 +679,39 @@ impl SettingsView {
                 self.commit(s, cx);
             }
             Key::Close => window.remove_window(),
+            Key::UpdateStatus => {}
+            Key::UpdateCheck => {
+                let reply = crate::updates::command("check", cx);
+                self.message = Some((
+                    if reply == "checking" {
+                        "Checking for updates…".into()
+                    } else {
+                        reply
+                    },
+                    false,
+                ));
+                cx.notify();
+            }
+            Key::UpdateApply => {
+                let reply = crate::updates::command("apply", cx);
+                let error = reply.starts_with("error")
+                    || reply.contains("failed")
+                    || reply.starts_with("Cannot");
+                self.message = Some((reply, error));
+                cx.notify();
+            }
+            Key::UpdateSkip => {
+                let reply = crate::updates::command("skip", cx);
+                self.message = Some((reply.clone(), reply.starts_with("error")));
+                cx.notify();
+            }
+            Key::UpdateNotes => {
+                self.message = Some(match crate::updates::open_notes(cx) {
+                    Ok(()) => ("Opening the release page".into(), false),
+                    Err(error) => (error, true),
+                });
+                cx.notify();
+            }
             other => self.adjust(other, 1, cx),
         }
     }
@@ -1158,6 +1339,38 @@ fn tilde(path: &std::path::Path) -> String {
             format!("~{}", &shown[home.len()..])
         }
         _ => shown,
+    }
+}
+
+/// The Version row's help: what is known about newer releases.
+fn update_help(u: &UpdateStatus, s: &Settings) -> String {
+    if s.update.mode == UpdateMode::Off {
+        return "Update checks are off.".into();
+    }
+    let when = match u.state.last_check {
+        Some(at) => {
+            let ago = orbit_update::now().saturating_sub(at);
+            if ago < 90 {
+                "just now".to_owned()
+            } else if ago < 5400 {
+                format!("{} min ago", ago / 60)
+            } else if ago < 172_800 {
+                format!("{} h ago", ago / 3600)
+            } else {
+                format!("{} days ago", ago / 86_400)
+            }
+        }
+        None => "never".to_owned(),
+    };
+    match (u.available(), &u.state.failed) {
+        (_, Some(failed)) => {
+            format!("Update to {failed} failed and was rolled back. Last check {when}.")
+        }
+        (Some(latest), _) => format!("{} is available. Last check {when}.", latest.version),
+        (None, _) => format!(
+            "Latest on the {} channel. Last check {when}.",
+            s.update.channel.name()
+        ),
     }
 }
 

@@ -1,0 +1,17 @@
+[package]
+name = "orbit-update"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Release checks and in-place updates for Orbit (no UI dependency)"
+
+[lints]
+workspace = true
+
+[dependencies]
+log.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true

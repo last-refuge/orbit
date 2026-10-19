@@ -94,12 +94,17 @@ pub enum Request {
     Drive(String),
     /// Open the settings window (closing the overview first).
     Settings,
+    /// `update check|apply|skip|rollback|notes|reload|restart|seen`.
+    Update(String),
 }
 
 impl Request {
     pub fn parse(line: &str) -> Result<Self, String> {
         if let Some(rest) = line.trim().strip_prefix("drive ") {
             return Ok(Request::Drive(rest.trim().to_owned()));
+        }
+        if let Some(rest) = line.trim().strip_prefix("update ") {
+            return Ok(Request::Update(rest.trim().to_owned()));
         }
         let mut words = line.split_whitespace();
         let command = words.next().unwrap_or_default();
@@ -130,6 +135,7 @@ impl Request {
             Request::State => "state".into(),
             Request::Settings => "settings".into(),
             Request::Drive(command) => format!("drive {command}"),
+            Request::Update(words) => format!("update {words}"),
         }
     }
 }
@@ -167,7 +173,7 @@ impl Desired {
                     self.size = size;
                 }
             }
-            Request::Status | Request::State | Request::Drive(_) => {}
+            Request::Status | Request::State | Request::Drive(_) | Request::Update(_) => {}
             // The overview holds the keyboard; the settings window needs it.
             Request::Settings => self.visible = false,
             Request::Quit => {
@@ -211,7 +217,7 @@ pub(crate) struct Envelope {
 
 /// The overlay, reachable from the settings window's commits.
 #[derive(Clone)]
-struct OverlayRef(Rc<RefCell<Overlay>>);
+pub(crate) struct OverlayRef(pub(crate) Rc<RefCell<Overlay>>);
 
 impl gpui::Global for OverlayRef {}
 
@@ -219,6 +225,8 @@ impl gpui::Global for OverlayRef {}
 pub struct Options {
     /// Accept `drive` requests (scripted end-to-end checks).
     pub test_hooks: bool,
+    /// Started by the updater on a new binary: the version it replaced.
+    pub after_update: Option<String>,
     /// The high-contrast theme (plan §04).
     pub high_contrast: bool,
     /// No travel animation.
@@ -340,7 +348,12 @@ pub fn run(options: Options) -> Result<()> {
                 last_engage: None,
             }));
             cx.set_global(OverlayRef(overlay.clone()));
+            cx.set_global(crate::updates::UpdateStatus::new(
+                options.after_update.as_deref(),
+            ));
+            cx.set_global(orbit_ui::theme::UpdateBadge::default());
             apply_settings(&mut overlay.borrow_mut(), cx);
+            crate::updates::start(OverlayRef(overlay.clone()), cx);
             // Hot-reload the settings file.
             let watched = overlay.clone();
             cx.spawn(async move |cx| {
@@ -642,7 +655,7 @@ struct LookOptions {
     reduced_motion: bool,
 }
 
-struct Overlay {
+pub(crate) struct Overlay {
     desk: Entity<Desk>,
     test_hooks: bool,
     window: Option<(WindowHandle<OverviewView>, Option<String>)>,
@@ -711,6 +724,8 @@ impl Overlay {
         let display_id = display.map(|display| display.id());
         if let Some((handle, _)) = self.window.take() {
             let _ = handle.update(cx, |_, window, _| window.remove_window());
+            // "Updated to X" has been seen once the overview it was shown in closes.
+            crate::updates::notice_seen(cx);
         }
         self.surface = None;
         let Some(output) = wanted else {
@@ -753,6 +768,7 @@ impl Overlay {
             _ => serde_json::Value::Null,
         };
         state["settings"] = cx.global::<Prefs>().summary_json();
+        state["update"] = cx.global::<crate::updates::UpdateStatus>().json();
         state["settings_window"] = self
             .settings_window
             .as_ref()
@@ -826,6 +842,28 @@ impl Overlay {
         if let Some(handle) = self.settings_window.take() {
             let _ = handle.update(cx, |_, window, _| window.remove_window());
         }
+    }
+
+    /// Everything the compositor must see go before this process is
+    /// replaced by a new binary: the bind, the corner surfaces, the windows.
+    pub(crate) fn prepare_exec(&mut self, cx: &mut App) {
+        self.shutdown(cx);
+        if let Some((handle, _)) = self.window.take() {
+            let _ = handle.update(cx, |_, window, _| window.remove_window());
+        }
+        self.surface = None;
+    }
+
+    /// Nothing open and nothing happening for `quiet`: the moment an
+    /// automatic update may restart the daemon.
+    pub(crate) fn is_idle(&self, cx: &App, quiet: Duration) -> bool {
+        if self.window.is_some() || self.settings_window.is_some() {
+            return false;
+        }
+        // The quiet window is far longer than any move takes to confirm,
+        // and every open (shortcut or corner) stamps `last_engage`.
+        let _ = cx;
+        self.last_engage.is_none_or(|at| at.elapsed() >= quiet)
     }
 
     /// A shortcut press while the overview is open counts as a double tap
@@ -943,6 +981,7 @@ async fn serve(
                 let reply = match &envelope.request {
                     Request::State => overlay.state(cx),
                     Request::Drive(command) => overlay.drive(command, cx),
+                    Request::Update(words) => crate::updates::command(words, cx),
                     _ => reply.clone(),
                 };
                 let _ = envelope.reply.send(reply);

@@ -79,8 +79,12 @@ do_uninstall() {
     for size in 64 128 256 512; do
         rm -f "$share_dir/icons/hicolor/${size}x${size}/apps/orbit.png"
     done
-    rm -f "$binary"
-    say "removed the binary, desktop entry and icons"
+    rm -f "$binary" "$bin_dir/orbit.prev" "$bin_dir/orbit.broken"
+    rm -rf "$bin_dir"/.orbit-update-*
+    rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/orbit/install.json"
+    rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/orbit/update.json"
+    rmdir "${XDG_DATA_HOME:-$HOME/.local/share}/orbit" "${XDG_STATE_HOME:-$HOME/.local/state}/orbit" 2>/dev/null || true
+    say "removed the binary, desktop entry, icons and the update records"
     if $purge; then
         rm -rf "$CONFIG_HOME/orbit"
         rm -f "$CONFIG_HOME/hypr/orbit.lua"
@@ -115,6 +119,17 @@ elif [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
 fi
 mkdir -p "$bin_dir" "$share_dir"
 
+# --- the install marker ------------------------------------------------------
+
+# How Orbit got here, for `orbit update`: only a release install is
+# replaced in place; a source build is told to pull and rebuild.
+write_marker() { # write_marker release|source VERSION
+    local dir=${XDG_DATA_HOME:-$HOME/.local/share}/orbit
+    mkdir -p "$dir"
+    printf '{\n  "method": "%s",\n  "prefix": "%s",\n  "installed_version": "%s",\n  "installed_at": %s\n}\n' \
+        "$1" "$PREFIX" "$2" "$(date +%s)" > "$dir/install.json"
+}
+
 # --- a release tarball -------------------------------------------------------
 
 # The newest release, pre-releases included (GitHub's releases/latest
@@ -142,6 +157,7 @@ install_release() {
     tar -xzf "$tmp/$name.tar.gz" -C "$tmp"
     [ -x "$tmp/$name/orbit" ] || die "the tarball has no orbit binary"
     install -m 755 "$tmp/$name/orbit" "$binary"
+    write_marker release "${tag#v}"
     say "installed $binary ($tag)"
 }
 
@@ -175,6 +191,7 @@ install_from_source() {
   libxkbcommon wayland vulkan-icd-loader fontconfig freetype2 zstd"
     fi
     install -m 755 "$src/target/release/orbit" "$binary"
+    write_marker source "$("$binary" --version | sed 's/^orbit //')"
     say "installed $binary ($("$binary" --version))"
 }
 
@@ -230,6 +247,9 @@ cat <<NEXT
          require("hypr.orbit")
 
   Check your session:          orbit doctor
+  Stay current:                Orbit checks GitHub for releases and shows a pill in the
+                               overview; the settings window (Ctrl+,) has "Check now",
+                               "Update" and "Install automatically". Or: orbit update check
   Remove it later:             curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash -s -- --uninstall
 
 NEXT
