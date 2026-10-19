@@ -228,6 +228,7 @@ Offer an opt-in session startup entry or a correctly session-bound user service.
 8. **ORB-008:** Brand fidelity pass (M2). Prepare approved vector logo, app icons and export sizes from the guide; install the brand typeface; match the guide's surfaces, card, rail, search and motion treatment; keep ORB-007's contrast and keyboard guarantees. Done when a native side-by-side review against the brand guide passes.
 9. **ORB-010:** Settings and engagement (M2, before install, since install ships the generated bind and autostart files). The Orbit mark in the overlay as the settings entry; a settings window and `orbit config` over `$XDG_CONFIG_HOME/orbit/config.toml` (hot-reloaded) covering the engage shortcut (a generated Hyprland snippet plus a live bind over IPC, with conflict reporting and an explicit, confirmed "add it for me"), a hot corner (Orbit's own corner surfaces with dwell), appearance, layout, behaviour, previews and privacy, icons and launch at login. Done when the shortcut and hot corner engage Orbit on a clean profile without hand-editing Hyprland's config, every setting round-trips through the file, and the checks cover them.
 10. **ORB-009:** Produce installable alpha and evidence report. Done when a clean test profile can install, launch, configure, and uninstall without altering unrelated settings.
+11. **ORB-011:** Stay up to date. Release checks, an in-app notice and in-place auto-update with rollback, so the installer is run once. Plan: [orbit-auto-update-plan.md](orbit-auto-update-plan.md).
 
 ## 11 · Validation and release criteria
 
