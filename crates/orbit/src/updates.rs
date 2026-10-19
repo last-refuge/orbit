@@ -545,7 +545,11 @@ pub fn under_unit() -> bool {
 /// Replaces this process with `binary daemon ARGS…`. Returns only if exec failed.
 fn exec_self(binary: &std::path::Path, args: Vec<String>) {
     use std::os::unix::process::CommandExt;
-    let error = Command::new(binary).args(&args).exec();
+    let error = Command::new(binary)
+        .env_remove("ORBIT_VERSION_OVERRIDE")
+        .env_remove("ORBIT_INSTALLED_BINARY")
+        .args(&args)
+        .exec();
     log::error!("exec {} {:?}: {error}", binary.display(), args);
 }
 

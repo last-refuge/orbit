@@ -109,6 +109,7 @@ fn stage_and_swap(
     }
     // Desktop entry and icons from the new binary; not fatal.
     let assets = Command::new(&install.binary)
+        .env_remove("ORBIT_VERSION_OVERRIDE")
         .args(["assets", "install"])
         .arg(install.share())
         .output();
@@ -172,9 +173,12 @@ fn verify_sha256(dir: &Path, name: &str) -> Result<(), String> {
     }
 }
 
-/// What `BINARY --version` prints after `orbit `.
+/// What `BINARY --version` prints after `orbit `. The scripted checks'
+/// override variables are scrubbed so the answer is the binary's own.
 pub fn version_of(binary: &Path) -> Result<String, String> {
     let out = Command::new(binary)
+        .env_remove("ORBIT_VERSION_OVERRIDE")
+        .env_remove("ORBIT_INSTALLED_BINARY")
         .arg("--version")
         .output()
         .map_err(|e| format!("running {}: {e}", binary.display()))?;
