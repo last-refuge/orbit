@@ -12,7 +12,15 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +61,23 @@ jobs:
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
+      # Signed only when the repository has the MINISIGN_KEY secret (the
+      # unencrypted secret key file from `minisign -G -W`); its public half
+      # is minisign.pub at the repository root, embedded in the binary.
+      - name: Sign
+        if: env.MINISIGN_KEY != ''
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
+        run: |
+          sudo apt-get install -y minisign
+          umask 077
+          printf '%s\n' "$MINISIGN_KEY" > "$RUNNER_TEMP/minisign.key"
+          name=${{ steps.package.outputs.name }}
+          minisign -S -W -s "$RUNNER_TEMP/minisign.key" -m "dist/$name.tar.gz" -x "dist/$name.tar.gz.minisig" \
+            -t "orbit $GITHUB_REF_NAME $name" -c "Orbit release"
+          rm -f "$RUNNER_TEMP/minisign.key"
+          minisign -V -p minisign.pub -m "dist/$name.tar.gz" -x "dist/$name.tar.gz.minisig"
+
       - name: Release notes from CHANGELOG
         run: |
           version=${GITHUB_REF_NAME#v}
@@ -65,8 +90,10 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: false
           body_path: dist/notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/${{ steps.package.outputs.name }}.tar.gz
             dist/${{ steps.package.outputs.name }}.tar.gz.sha256
+            dist/${{ steps.package.outputs.name }}.tar.gz.minisig

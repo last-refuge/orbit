@@ -4,6 +4,44 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.0-alpha.2] - Unreleased
+
+Staying up to date without the installer.
+
+### Added
+- Release checks: the daemon asks GitHub's releases list (conditionally,
+  with an ETag; every `update.check_interval_hours`, 6 by default; never
+  blocking the UI) and `orbit update check` asks at once. Channels:
+  pre-releases (the default while 0.x) or stable only.
+- The pill beside the logo in the overview when a newer version exists
+  (or after an update, or after a rollback), opening the settings.
+- An Updates section in the settings window: version and last check,
+  Check now, Update, Skip this version, Release notes, mode, channel,
+  interval, desktop notification.
+- In-place updates: `orbit update apply` (and the settings window's
+  Update) downloads the release tarball beside the binary, verifies its
+  sha256, sanity-runs the new binary, keeps the old one as `orbit.prev`,
+  swaps atomically, refreshes the desktop entry and icons, and restarts
+  the daemon (through the login unit, or by replacing the process). A
+  watcher rolls back and relaunches if the new daemon does not answer
+  within 10 s; a crash-loop guard at start does the same after three
+  early exits. `orbit update rollback` by hand. A failed version is never
+  offered again.
+- Automatic mode (`update.mode = "auto"`): installs at a quiet moment
+  and says what was installed; offered once after the first manual update,
+  never turned on silently.
+- One desktop notification per new version.
+- Signed releases: the workflow signs each tarball with minisign when the
+  repository has the key; the client verifies the signature when the
+  public key is embedded.
+- aarch64 release builds.
+- The installer records how Orbit was installed (`install.json`); only a
+  release install replaces itself, a source build is told to rebuild.
+
+### Changed
+- Version 0.1.0-alpha.2; the first build that can update itself. Users of
+  alpha.1 run the install line once more.
+
 ## [0.1.0-alpha.1] - 2026-10-19
 
 The first tagged build: the overview works end to end on Hyprland 0.56 and
@@ -38,4 +76,5 @@ is ready for other people to try.
   window placement rather than content until enabled.
 - No vector logo source yet; the brand files are rasters.
 
+[0.1.0-alpha.2]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.1

@@ -57,6 +57,23 @@ fn stage_and_swap(
     http.download(&latest.tarball_url, &tarball)?;
     http.download(&latest.sha256_url, &sha)?;
     verify_sha256(work, name)?;
+    let signature_text = match &latest.signature_url {
+        Some(url) => {
+            let sig = work.join(format!("{name}.minisig"));
+            http.download(url, &sig)?;
+            Some(fs::read_to_string(&sig).map_err(|e| format!("reading the signature: {e}"))?)
+        }
+        None => None,
+    };
+    match crate::signature::check(&latest.version, &tarball, signature_text.as_deref())? {
+        crate::signature::Verdict::Verified => log::info!("{name}: signature verified"),
+        crate::signature::Verdict::UnsignedButOld => {
+            log::info!("{name}: unsigned (published before signing)")
+        }
+        crate::signature::Verdict::NoKeyEmbedded => {
+            log::debug!("{name}: no public key in this build")
+        }
+    }
     let out = Command::new("tar")
         .args(["-xzf"])
         .arg(&tarball)
@@ -278,7 +295,7 @@ mod tests {
         // A tampered checksum is refused and nothing changes.
         fs::write(&sha, "deadbeef  nope.tar.gz\n").unwrap();
         let wrong = Latest {
-            version: "0.1.0-alpha.3".into(),
+            version: "0.1.0-alpha.2.3".into(),
             ..latest.clone()
         };
         let err = apply(&install, &wrong, &http).unwrap_err();
@@ -286,16 +303,28 @@ mod tests {
         assert_eq!(version_of(&binary).unwrap(), "0.1.0-alpha.2");
 
         // A tarball whose binary reports the wrong version is refused too.
-        let (tarball3, sha3) = fake_release(&served, "0.1.0-alpha.3", "x86_64");
+        let (tarball3, sha3) = fake_release(&served, "0.1.0-alpha.2.3", "x86_64");
         let lying = Latest {
-            version: "0.1.0-alpha.4".into(),
+            version: "0.1.0-alpha.2.4".into(),
             tarball_url: format!("{base}/{}", tarball3.file_name().unwrap().to_string_lossy()),
             sha256_url: format!("{base}/{}", sha3.file_name().unwrap().to_string_lossy()),
             ..Latest::default()
         };
         let err = apply(&install, &lying, &http).unwrap_err();
-        assert!(err.contains("expected 0.1.0-alpha.4"), "{err}");
+        assert!(err.contains("expected 0.1.0-alpha.2.4"), "{err}");
         assert_eq!(version_of(&binary).unwrap(), "0.1.0-alpha.2");
+
+        // With the public key embedded, a release from SIGNED_SINCE on
+        // must be signed: unsigned is refused before anything is unpacked.
+        if crate::signature::public_key().is_some() {
+            let unsigned = Latest {
+                version: crate::signature::SIGNED_SINCE.into(),
+                ..lying.clone()
+            };
+            let err = apply(&install, &unsigned, &http).unwrap_err();
+            assert!(err.contains("must be signed"), "{err}");
+            assert_eq!(version_of(&binary).unwrap(), "0.1.0-alpha.2");
+        }
 
         // Rollback puts alpha.1 back.
         assert_eq!(rollback(&install).unwrap(), "0.1.0-alpha.1");

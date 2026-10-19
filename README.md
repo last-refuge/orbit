@@ -119,6 +119,10 @@ orbit config set shortcut.key F12        # xkb key names; mods are SUPER, SHIFT,
 | `previews.never_capture` | `[]` | window classes that are never captured |
 | `icons.theme` | | icon theme override (your desktop's otherwise) |
 | `startup.launch_at_login` | `false` | a systemd user unit, `orbit.service`, generated and enabled for you |
+| `update.mode` | `notify` | `notify` shows a pill and a notification when a release is out; `auto` installs it at a quiet moment; `off` never checks |
+| `update.channel` | `prerelease` | `prerelease` takes every release (the alphas); `stable` waits for releases not marked pre-release |
+| `update.check_interval_hours` | `6` | hours between checks of GitHub's releases list (1–168) |
+| `update.notify` | `true` | one desktop notification when a new version is first seen |
 
 **Keeping the shortcut across Hyprland restarts.** The daemon binds it live
 over IPC, and writes a one-line snippet to `~/.config/hypr/orbit.lua`. To load
@@ -131,6 +135,32 @@ require("hypr.orbit")
 Orbit never edits `hyprland.lua` itself. The settings window offers to append
 that line, shows you exactly what it will write, and does it only when you
 confirm.
+
+## Staying up to date
+
+Install once. Orbit checks GitHub's releases list every six hours (a
+conditional request that costs nothing when nothing changed) and, when a
+newer build exists, shows a pill beside the logo in the overview and sends
+one desktop notification. The settings window's **Updates** section has
+**Check now** for when you do not want to wait, **Update** to install in
+place, **Skip this version**, and the release notes.
+
+An update downloads the release tarball, verifies its checksum (and its
+signature, for signed releases), runs the new binary once, keeps the old
+one as `orbit.prev`, swaps atomically, and restarts the daemon. If the new
+daemon does not answer within ten seconds, a watcher puts the old one back.
+Pick **Install automatically** and Orbit does all of that by itself at a
+quiet moment and tells you afterwards.
+
+```bash
+orbit update check            # ask now
+orbit update apply            # install the newest release and restart
+orbit update rollback         # back to the previous binary
+orbit config set update.mode auto
+```
+
+Only an install made by the install line updates itself; a build from
+source is told to pull and rebuild instead.
 
 ## How it works
 

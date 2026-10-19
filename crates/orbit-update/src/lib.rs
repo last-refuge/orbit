@@ -13,6 +13,7 @@ pub mod check;
 pub mod client;
 pub mod install;
 pub mod release;
+pub mod signature;
 pub mod state;
 
 pub use apply::{Applied, apply, rollback};

@@ -112,6 +112,20 @@ original_ws=
 # person's own (ORBIT_CONFIG); the live bind it applies is released on quit.
 export ORBIT_CONFIG=$out/config.toml
 rm -f "$ORBIT_CONFIG"
+# Release checks go to a fixture server, never to GitHub, during the run.
+fixture_port=$((19500 + RANDOM % 400))
+fixture_dir=$out/fixture-releases
+mkdir -p "$fixture_dir/releases/v99.0.0"
+touch "$fixture_dir/releases/v99.0.0/prerelease"
+printf '## 99.0.0\n\nA fixture release for the review checks.\n' > "$fixture_dir/releases/v99.0.0/notes.md"
+: > "$fixture_dir/releases/v99.0.0/orbit-99.0.0-$(uname -m)-unknown-linux-gnu.tar.gz"
+: > "$fixture_dir/releases/v99.0.0/orbit-99.0.0-$(uname -m)-unknown-linux-gnu.tar.gz.sha256"
+python3 -I "$here/scripts/fake-release-server.py" serve "$fixture_dir" "$fixture_port" >"$out/fixture-releases.log" 2>&1 &
+fixture_pid=$!
+export ORBIT_API_BASE=http://127.0.0.1:$fixture_port
+export ORBIT_UPDATE_START_DELAY_MS=3600000
+export XDG_STATE_HOME=$out/state
+rm -rf "$XDG_STATE_HOME/orbit"
 start_daemon() { # start_daemon [daemon options…]
     RUST_LOG=${RUST_LOG:-warn,orbit=debug} "$orbit" daemon --test-hooks "$@" >> "$out/daemon.log" 2>&1 &
     daemon_pid=$!
@@ -125,6 +139,7 @@ stop_daemon() {
 }
 finish() {
     stop_daemon
+    [[ -n ${fixture_pid:-} ]] && kill "$fixture_pid" 2>/dev/null
     if ! $fake; then "$here/scripts/fixtures.sh" clean >/dev/null 2>&1; fi
     [[ -n $original_ws ]] && focus_workspace "$original_ws"
     echo "$failures failure(s); results in $results"
@@ -386,6 +401,22 @@ check "shortcut: the generated snippet exists and binds orbit toggle" \
 check "config: set and get round-trip through the file" \
     test "$("$orbit" config set hot_corner.dwell_ms 250)" = 250 -a "$("$orbit" config get hot_corner.dwell_ms)" = 250
 check "config: bad values are refused" bash -c '! "$0" config set appearance.blur 99 2>/dev/null' "$orbit"
+# --- updates (ORB-011): the check, the state, the pill -------------------------------------------
+check "updates: orbit state has the update section with this build's version" \
+    wait_for '.update.current == "'"$("$orbit" --version | sed 's/^orbit //')"'" and .update.available == false'
+check "updates: orbit update check against the fixture finds 99.0.0" \
+    bash -c '"$0" update check 2>&1 | grep -q "99.0.0 is available"' "$orbit"
+check "updates: the daemon re-reads the state and offers it" \
+    wait_for '.update.available == true and .update.latest == "99.0.0"'
+check "updates: notes come from the fixture" bash -c '"$0" update notes | grep -q "fixture release"' "$orbit"
+must "updates: reopen for the pill" open
+check "updates: the overview shows the update pill (a11y button named for the version)" \
+    bash -c '"$0" drive a11y | grep -q "99.0.0 available"' "$orbit"
+key escape
+closed >/dev/null
+check "updates: skip stops the offer" \
+    bash -c '"$0" update skip >/dev/null && for _ in $(seq 20); do "$0" state | jq -e ".update.available == false" >/dev/null && exit 0; sleep 0.1; done; exit 1' "$orbit"
+
 "$orbit" config set hot_corner.corner top-left >/dev/null
 check "hot corner: the daemon picks the change up and puts a corner surface in place" \
     wait_for '.settings.hot_corner == "TopLeft" and .settings.corners >= 1'
