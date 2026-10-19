@@ -11,6 +11,7 @@ See every window, find any of them, put them where they belong.</p>
 <p align="center">
   <a href="https://github.com/last-refuge/orbit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/last-refuge/orbit/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://github.com/last-refuge/orbit/releases"><img alt="Release" src="https://img.shields.io/github/v/release/last-refuge/orbit?include_prereleases&label=release"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/last-refuge/orbit"></a>
 </p>
 
 <p align="center">
@@ -192,4 +193,4 @@ checks never print or record window titles.
 Font License 1.1. [GPUI](https://www.gpui.rs) from the [Zed](https://zed.dev)
 editor. Hyprland, for a compositor worth building on.
 
-Orbit is licensed under Apache-2.0.
+Orbit is released under the [MIT License](LICENSE).
