@@ -9,7 +9,7 @@
 See every window, find any of them, put them where they belong.</p>
 
 <p align="center">
-  <a href="https://github.com/last-refuge/orbit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/last-refuge/orbit/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/last-refuge/orbit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/last-refuge/orbit/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://github.com/last-refuge/orbit/releases"><img alt="Release" src="https://img.shields.io/github/v/release/last-refuge/orbit?include_prereleases&label=release"></a>
 </p>
 

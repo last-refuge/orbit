@@ -876,13 +876,10 @@ impl Render for SettingsView {
                     )
                     .child(div().flex_1())
                     .child(
-                        div().text_size(px(12.)).text_color(t.muted.rgba()).child(
-                            prefs
-                                .path
-                                .as_ref()
-                                .map(|p| tilde(p))
-                                .unwrap_or_default(),
-                        ),
+                        div()
+                            .text_size(px(12.))
+                            .text_color(t.muted.rgba())
+                            .child(prefs.path.as_ref().map(|p| tilde(p)).unwrap_or_default()),
                     ),
             )
             .child(
@@ -1153,6 +1150,17 @@ fn small_button(t: Theme, label: &str) -> gpui::Stateful<gpui::Div> {
 #[allow(dead_code)]
 pub const SAVE_DEBOUNCE: Duration = Duration::from_millis(0);
 
+/// A path for people to read: the home directory as `~`.
+fn tilde(path: &std::path::Path) -> String {
+    let shown = path.display().to_string();
+    match std::env::var("HOME") {
+        Ok(home) if !home.is_empty() && shown.starts_with(&home) => {
+            format!("~{}", &shown[home.len()..])
+        }
+        _ => shown,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1165,16 +1173,5 @@ mod tests {
         assert_eq!(xkb_name("a"), "a");
         assert_eq!(xkb_name("enter"), "Return");
         assert!(is_modifier_key("shift") && !is_modifier_key("q"));
-    }
-}
-
-/// A path for people to read: the home directory as `~`.
-fn tilde(path: &std::path::Path) -> String {
-    let shown = path.display().to_string();
-    match std::env::var("HOME") {
-        Ok(home) if !home.is_empty() && shown.starts_with(&home) => {
-            format!("~{}", &shown[home.len()..])
-        }
-        _ => shown,
     }
 }
