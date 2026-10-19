@@ -4,7 +4,27 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0-alpha.2] - Unreleased
+## [0.1.0-alpha.3] - Unreleased
+
+The first build with an aarch64 tarball, and the first the updater
+requires to be signed.
+
+### Added
+- aarch64 release tarballs (alpha.2's arm build did not publish).
+
+### Changed
+- Releases from this version on must carry a valid minisign signature;
+  the updater refuses an unsigned or badly signed one before unpacking.
+
+### Fixed
+- The updater scrubs its own test-only override variables from the
+  processes it launches (the new binary's version check, the desktop
+  entry refresh, the restarted daemon), so a stray value in the
+  environment can never make a correct download look wrong.
+- The blur timing test allows a cold CI runner (2 s budget in debug
+  builds), which is what failed the aarch64 job.
+
+## [0.1.0-alpha.2] - 2026-10-19
 
 Staying up to date without the installer.
 
@@ -76,5 +96,6 @@ is ready for other people to try.
   window placement rather than content until enabled.
 - No vector logo source yet; the brand files are rasters.
 
+[0.1.0-alpha.3]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.1
