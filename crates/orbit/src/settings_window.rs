@@ -153,13 +153,13 @@ impl SettingsView {
         let include_help = match (&p.snippet_path, p.include_present) {
             (Some(path), true) => format!(
                 "Permanent: hyprland.lua already requires {} (hypr/orbit.lua).",
-                path.display()
+                tilde(path)
             ),
             (Some(path), false) => format!(
                 "To keep the shortcut after Hyprland restarts, hyprland.lua needs one line: \
                  {}  (the bind lives in {}).",
                 crate::engage::INCLUDE_LINE,
-                path.display()
+                tilde(path)
             ),
             (None, _) => "No config directory found.".into(),
         };
@@ -789,7 +789,7 @@ impl Render for SettingsView {
                             prefs
                                 .hyprland_lua
                                 .as_ref()
-                                .map(|p| p.display().to_string())
+                                .map(|p| tilde(p))
                                 .unwrap_or_default()
                         )),
                 )
@@ -880,7 +880,7 @@ impl Render for SettingsView {
                             prefs
                                 .path
                                 .as_ref()
-                                .map(|p| p.display().to_string())
+                                .map(|p| tilde(p))
                                 .unwrap_or_default(),
                         ),
                     ),
@@ -1165,5 +1165,16 @@ mod tests {
         assert_eq!(xkb_name("a"), "a");
         assert_eq!(xkb_name("enter"), "Return");
         assert!(is_modifier_key("shift") && !is_modifier_key("q"));
+    }
+}
+
+/// A path for people to read: the home directory as `~`.
+fn tilde(path: &std::path::Path) -> String {
+    let shown = path.display().to_string();
+    match std::env::var("HOME") {
+        Ok(home) if !home.is_empty() && shown.starts_with(&home) => {
+            format!("~{}", &shown[home.len()..])
+        }
+        _ => shown,
     }
 }
