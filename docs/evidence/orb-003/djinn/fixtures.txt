@@ -1,0 +1,6 @@
+xterm not installed: skipping the XWayland fixture (sudo pacman -S xterm)
+0x55966e572b50	91	dev.orbit.fixture.tiled-b	floating=true fullscreen=0 xwayland=false
+0x55966e574a00	93	dev.orbit.fixture.fullscreen	floating=true fullscreen=2 xwayland=false
+0x55966e597960	91	dev.orbit.fixture.tiled-a	floating=true fullscreen=0 xwayland=false
+0x55966e5b2460	special:orbitfx	dev.orbit.fixture.special	floating=true fullscreen=0 xwayland=false
+0x55966e5a4e20	92	dev.orbit.fixture.floating	floating=true fullscreen=0 xwayland=false

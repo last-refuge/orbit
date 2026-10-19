@@ -1,0 +1,269 @@
+{
+  "label": "inactive",
+  "hyprland_version": "v0.56.2",
+  "address_mapping": true,
+  "toplevels_listed": 21,
+  "rss_kib_before": 6276,
+  "rss_kib_after": 28752,
+  "windows": [
+    {
+      "name": "floating",
+      "address": "0x55966de15ce0",
+      "placement": {
+        "workspace": "92",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.193383,
+        "p95": 0.289515,
+        "max": 0.5541969999999999
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 6.595438000000001,
+        "p95": 6.961933,
+        "max": 6.97984
+      },
+      "convert_ms": {
+        "p50": 1.377684,
+        "p95": 1.665035,
+        "max": 2.006898
+      },
+      "repeat_without_damage": "new frame after 6.0 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "fullscreen",
+      "address": "0x55966dd95c20",
+      "placement": {
+        "workspace": "93",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": true,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 2.486755,
+        "p95": 4.406257999999999,
+        "max": 4.437905
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 2880,
+      "height": 1800,
+      "stride": 11520,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 20736000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 23.697205,
+        "p95": 29.960112000000002,
+        "max": 97.444334
+      },
+      "convert_ms": {
+        "p50": 13.270652,
+        "p95": 15.724829999999999,
+        "max": 16.822912
+      },
+      "repeat_without_damage": "new frame after 14.2 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#f46768"
+      },
+      "own_accent_fraction": 0.9556134259259259,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "special",
+      "address": "0x55966e6612b0",
+      "placement": {
+        "workspace": "special:orbitfx",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.382178,
+        "p95": 0.561357,
+        "max": 0.64638
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 6.9706660000000005,
+        "p95": 9.328822,
+        "max": 10.393947
+      },
+      "convert_ms": {
+        "p50": 0.538234,
+        "p95": 0.9919499999999999,
+        "max": 1.019112
+      },
+      "repeat_without_damage": "new frame after 7.5 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-a",
+      "address": "0x55966e2a3290",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-b"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.340687,
+        "p95": 0.465439,
+        "max": 0.642792
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.289447999999999,
+        "p95": 8.849638,
+        "max": 11.227223
+      },
+      "convert_ms": {
+        "p50": 0.509462,
+        "p95": 0.697989,
+        "max": 0.773079
+      },
+      "repeat_without_damage": "new frame after 6.3 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a33"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-b",
+      "address": "0x55966df0f9c0",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-a"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.371455,
+        "p95": 0.485542,
+        "max": 0.49082300000000006
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.436335,
+        "p95": 8.071936,
+        "max": 12.411882
+      },
+      "convert_ms": {
+        "p50": 0.512295,
+        "p95": 0.710959,
+        "max": 0.748288
+      },
+      "repeat_without_damage": "new frame after 7.7 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    }
+  ]
+}

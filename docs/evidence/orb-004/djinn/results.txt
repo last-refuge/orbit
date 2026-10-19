@@ -1,0 +1,60 @@
+== inactive
+Capture check `inactive` · Hyprland v0.56.2 · address mapping yes · 21 toplevels listed
+  floating     Ok · ws 92 inactive floating · 600x400 Argb8888 · capture p50 6.6 ms p95 7.0 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 6.0 ms
+  fullscreen   Ok · ws 93 inactive floating fullscreen · 2880x1800 Argb8888 · capture p50 23.7 ms p95 30.0 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 14.2 ms
+  special      Ok · ws special:orbitfx inactive floating · 600x400 Argb8888 · capture p50 7.0 ms p95 9.3 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 7.5 ms
+  tiled-a      Ok · ws 91 inactive floating overlaps tiled-b · 600x400 Argb8888 · capture p50 7.3 ms p95 8.8 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 6.3 ms
+  tiled-b      Ok · ws 91 inactive floating overlaps tiled-a · 600x400 Argb8888 · capture p50 7.4 ms p95 8.1 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 7.7 ms
+  RSS 6276 KiB → 28752 KiB
+PASS inactive
+== visible-occluded
+Capture check `visible-occluded` · Hyprland v0.56.2 · address mapping yes · 21 toplevels listed
+  floating     Ok · ws 92 inactive floating · 600x400 Argb8888 · capture p50 6.5 ms p95 7.4 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 6.4 ms
+  fullscreen   Ok · ws 93 inactive floating fullscreen · 2880x1800 Argb8888 · capture p50 23.5 ms p95 26.6 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  special      Ok · ws special:orbitfx inactive floating · 600x400 Argb8888 · capture p50 7.7 ms p95 8.2 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  tiled-a      Ok · ws 91 visible floating overlaps tiled-b · 600x400 Argb8888 · capture p50 6.9 ms p95 8.1 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  tiled-b      Ok · ws 91 visible floating overlaps tiled-a · 600x400 Argb8888 · capture p50 7.0 ms p95 7.6 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  RSS 6400 KiB → 28820 KiB
+PASS visible-occluded
+== visible-fullscreen
+Capture check `visible-fullscreen` · Hyprland v0.56.2 · address mapping yes · 21 toplevels listed
+  floating     Ok · ws 92 inactive floating · 600x400 Argb8888 · capture p50 6.4 ms p95 6.8 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  fullscreen   Ok · ws 93 visible floating fullscreen · 2880x1800 Argb8888 · capture p50 23.9 ms p95 25.1 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  special      Ok · ws special:orbitfx inactive floating · 600x400 Argb8888 · capture p50 7.4 ms p95 7.9 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  tiled-a      Ok · ws 91 inactive floating overlaps tiled-b · 600x400 Argb8888 · capture p50 7.4 ms p95 7.9 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  tiled-b      Ok · ws 91 inactive floating overlaps tiled-a · 600x400 Argb8888 · capture p50 7.2 ms p95 7.8 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  RSS 6440 KiB → 28824 KiB
+PASS visible-fullscreen
+== preview
+Capture check `preview` · Hyprland v0.56.2 · address mapping yes · 22 toplevels listed
+  floating     Ok · ws 92 inactive floating · 600x400 Argb8888 · capture p50 5.9 ms p95 11.6 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 10.9 ms
+  fullscreen   Ok · ws 93 inactive floating fullscreen · 2880x1800 Argb8888 · capture p50 24.2 ms p95 29.0 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 12.1 ms
+  preview      Ok · ws 94 visible floating · 1375x900 Argb8888 · capture p50 6.2 ms p95 9.6 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 4.2 ms
+  special      Ok · ws special:orbitfx inactive floating · 600x400 Argb8888 · capture p50 6.9 ms p95 7.5 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  tiled-a      Ok · ws 91 inactive floating overlaps tiled-b · 600x400 Argb8888 · capture p50 7.7 ms p95 8.1 ms · 20 fresh sessions
+      repeat frame without damage: new frame after 245.5 ms
+  tiled-b      Ok · ws 91 inactive floating overlaps tiled-a · 600x400 Argb8888 · capture p50 7.5 ms p95 8.5 ms · 20 fresh sessions
+      repeat frame without damage: waits for damage (none within 250ms)
+  RSS 6316 KiB → 28780 KiB
+PASS preview
+preview RSS: 131244 kB
+== done: 0 failing scenario(s)

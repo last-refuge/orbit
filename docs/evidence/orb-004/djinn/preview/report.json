@@ -1,0 +1,320 @@
+{
+  "label": "preview",
+  "hyprland_version": "v0.56.2",
+  "address_mapping": true,
+  "toplevels_listed": 22,
+  "rss_kib_before": 6316,
+  "rss_kib_after": 28780,
+  "windows": [
+    {
+      "name": "floating",
+      "address": "0x55966de15ce0",
+      "placement": {
+        "workspace": "92",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.345107,
+        "p95": 0.463408,
+        "max": 0.476941
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 5.879119,
+        "p95": 11.580632,
+        "max": 15.084237
+      },
+      "convert_ms": {
+        "p50": 1.78637,
+        "p95": 2.081782,
+        "max": 2.313033
+      },
+      "repeat_without_damage": "new frame after 10.9 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "fullscreen",
+      "address": "0x55966dd95c20",
+      "placement": {
+        "workspace": "93",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": true,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 2.767261,
+        "p95": 4.139147,
+        "max": 5.98116
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 2880,
+      "height": 1800,
+      "stride": 11520,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 20736000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 24.201422,
+        "p95": 29.037879,
+        "max": 30.374724
+      },
+      "convert_ms": {
+        "p50": 17.731489,
+        "p95": 20.133541,
+        "max": 23.550854
+      },
+      "repeat_without_damage": "new frame after 12.1 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#11172a"
+      },
+      "own_accent_fraction": 0.009008487654320987,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "preview",
+      "address": "0x55966de42140",
+      "placement": {
+        "workspace": "94",
+        "workspace_visible": true,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.6249889999999999,
+        "p95": 0.7966730000000001,
+        "max": 0.810521
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 1375,
+      "height": 900,
+      "stride": 5500,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 4950000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 6.1910940000000005,
+        "p95": 9.56813,
+        "max": 15.545433000000001
+      },
+      "convert_ms": {
+        "p50": 1.664599,
+        "p95": 2.1797679999999997,
+        "max": 2.614019
+      },
+      "repeat_without_damage": "new frame after 4.2 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#0f1527"
+      },
+      "own_accent_fraction": 0.0,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "special",
+      "address": "0x55966e6612b0",
+      "placement": {
+        "workspace": "special:orbitfx",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.5625330000000001,
+        "p95": 0.758979,
+        "max": 0.779328
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 6.896839,
+        "p95": 7.524699999999999,
+        "max": 8.337815
+      },
+      "convert_ms": {
+        "p50": 0.8009090000000001,
+        "p95": 1.005391,
+        "max": 1.006824
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-a",
+      "address": "0x55966e2a3290",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-b"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.300789,
+        "p95": 0.381195,
+        "max": 0.438228
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.721002,
+        "p95": 8.108142,
+        "max": 8.173721
+      },
+      "convert_ms": {
+        "p50": 0.274594,
+        "p95": 0.322853,
+        "max": 0.330251
+      },
+      "repeat_without_damage": "new frame after 245.5 ms",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a33"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-b",
+      "address": "0x55966df0f9c0",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-a"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.408844,
+        "p95": 0.530201,
+        "max": 0.558505
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.479763999999999,
+        "p95": 8.485915,
+        "max": 13.773884
+      },
+      "convert_ms": {
+        "p50": 0.417799,
+        "p95": 0.5456799999999999,
+        "max": 0.547054
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    }
+  ]
+}

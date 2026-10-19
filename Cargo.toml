@@ -1,0 +1,57 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/orbit"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.98.1"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+orbit-capture = { path = "crates/orbit-capture" }
+orbit-core = { path = "crates/orbit-core" }
+orbit-hyprland = { path = "crates/orbit-hyprland" }
+orbit-ui = { path = "crates/orbit-ui" }
+
+anyhow = "1"
+futures = "0.3"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smallvec = "1"
+uuid = { version = "1", features = ["v5"] }
+wayland-client = "0.31"
+wayland-backend = "0.3"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-scanner = "0.31"
+rustix = { version = "1", features = ["event", "fs"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+
+# GPUI and its platform crates must come from the same full Zed revision.
+# Bump all three together, then re-run the native smoke checks (see README).
+gpui = { git = "https://github.com/zed-industries/zed", rev = "56934ec0560bce8929025497411de7f5322fb6ca" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "56934ec0560bce8929025497411de7f5322fb6ca", features = ["wayland"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+
+[profile.release]
+debug = "line-tables-only"
+
+# Zed patches these crates.io dependencies at the pinned revision. Patches do
+# not propagate to dependents, so mirror the ones in GPUI's Linux graph to run
+# the same code Zed ships. Re-copy from Zed's Cargo.toml when bumping `rev`.
+[patch.crates-io]
+async-process = { git = "https://github.com/zed-industries/async-process.git", rev = "0b6d6713570af61806e1e5cb40e0f757cb93fd9d" }
+async-task = { git = "https://github.com/zed-industries/async-task.git", rev = "015845a19fc31752c02367567d3b8900a406f9da" }
+calloop = { git = "https://github.com/zed-industries/calloop", rev = "3759371fee14c40066d64777e2a36b6ffcc22590" }
+khronos-egl = { git = "https://github.com/zed-industries/khronos-egl", rev = "42214b36347b108fd9630ca6254b96dde59e04fe" }

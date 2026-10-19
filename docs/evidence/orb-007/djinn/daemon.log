@@ -1,0 +1,74 @@
+[2026-10-19T04:32:09Z INFO  orbit::daemon] connected to Hyprland 0.56.2 (Lua dispatch)
+[2026-10-19T04:32:09Z DEBUG orbit_ui::desk] overview session 1 opened
+[2026-10-19T04:32:09Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:09Z DEBUG orbit::previews] capture round: 5 new frames for 5 windows (19 listed)
+[2026-10-19T04:32:09Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:09Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit_ui::desk] overview session 1 closed
+[2026-10-19T04:32:10Z DEBUG orbit_ui::desk] overview session 2 opened
+[2026-10-19T04:32:10Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:10Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:10Z DEBUG orbit_ui::desk] overview session 2 closed
+[2026-10-19T04:32:11Z DEBUG orbit_ui::desk] overview session 3 opened
+[2026-10-19T04:32:11Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:11Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:11Z DEBUG orbit_ui::desk] overview session 3 closed
+[2026-10-19T04:32:12Z DEBUG orbit_ui::desk] overview session 4 opened
+[2026-10-19T04:32:12Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit_ui::desk] overview session 4 closed
+[2026-10-19T04:32:12Z DEBUG orbit_ui::desk] overview session 5 opened
+[2026-10-19T04:32:12Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:12Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:13Z DEBUG orbit_ui::desk] overview session 5 closed
+[2026-10-19T04:32:13Z DEBUG orbit_ui::desk] overview session 6 opened
+[2026-10-19T04:32:13Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 0 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:13Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:13Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:14Z DEBUG orbit::previews] capture round: 1 new frames for 1 windows (19 listed)
+[2026-10-19T04:32:14Z DEBUG orbit_ui::desk] overview session 6 closed
+[2026-10-19T04:32:14Z INFO  orbit::daemon] settings file changed; applying
+[2026-10-19T04:32:14Z DEBUG orbit_ui::desk] overview session 7 opened
+[2026-10-19T04:32:14Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:14Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:14Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:14Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:15Z DEBUG orbit_ui::desk] overview session 7 closed
+[2026-10-19T04:32:15Z INFO  orbit::daemon] settings file changed; applying
+[2026-10-19T04:32:16Z INFO  orbit::daemon] settings file changed; applying
+[2026-10-19T04:32:16Z DEBUG orbit_ui::desk] overview session 8 opened
+[2026-10-19T04:32:16Z INFO  orbit::previews] previews: capture connected (address mapping: true)
+[2026-10-19T04:32:16Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:16Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:16Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:17Z DEBUG orbit::previews] capture round: 2 new frames for 2 windows (19 listed)
+[2026-10-19T04:32:17Z DEBUG orbit_ui::desk] overview session 8 closed
+[2026-10-19T04:32:17Z INFO  orbit::daemon] settings file changed; applying
+[2026-10-19T04:32:18Z INFO  orbit::daemon] connected to Hyprland 0.56.2 (Lua dispatch)
+[2026-10-19T04:32:18Z INFO  orbit::daemon] connected to Hyprland 0.56.2 (Lua dispatch)
+[2026-10-19T04:32:18Z INFO  orbit::daemon] connected to Hyprland 0.56.2 (Lua dispatch)

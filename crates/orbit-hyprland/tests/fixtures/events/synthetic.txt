@@ -1,0 +1,17 @@
+createworkspacev2>>91,91
+openwindow>>55d0c1a2b3c0,91,dev.orbit.fixture.tiled-a,<redacted len=24 id=00000001>
+activewindowv2>>55d0c1a2b3c0
+openwindow>>55d0c1a2b4d0,91,dev.orbit.fixture.tiled-b,<redacted len=24 id=00000002>
+changefloatingmode>>55d0c1a2b4d0,1
+workspacev2>>91,91
+focusedmonv2>>eDP-1,91
+movewindowv2>>55d0c1a2b4d0,92,92
+createworkspacev2>>92,92
+activespecialv2>>-98,special:orbitfx,eDP-1
+activespecialv2>>,,eDP-1
+fullscreen>>1
+windowtitlev2>>55d0c1a2b3c0,<redacted len=3 id=00000003>
+closewindow>>55d0c1a2b3c0
+closewindow>>55d0c1a2b4d0
+destroyworkspacev2>>91,91
+workspacev2>>1,1

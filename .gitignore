@@ -1,0 +1,19 @@
+# Build output
+/target
+/smoke-output
+
+# Stray logs and recordings; evidence logs are deliberate and reviewed
+*.log
+!docs/evidence/**/*.log
+*.mp4
+*.webm
+*.gif
+docs/evidence/**/unmasked*
+
+# Raw compositor dumps and screenshots that carry window titles or home paths
+docs/evidence/doctor/
+docs/evidence/orb-010/djinn/settings-window.png
+
+# Local scratch
+*.tmp
+.orbit.lua.*.tmp

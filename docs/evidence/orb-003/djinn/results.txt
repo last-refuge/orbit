@@ -1,0 +1,37 @@
+orbit: orbit 0.0.1
+hyprland: 0.56.2
+monitors: eDP-1 2880x1800@1.25
+date: 2026-10-18T14:36:33-07:00
+PASS  daemon starts
+PASS  no Orbit surface while hidden
+PASS  show opens exactly one surface
+PASS  surface is on the focused monitor (eDP-1)
+PASS  surface is on the overlay layer (level 3, got 3)
+PASS  surface covers the output (2304x1440 of 2304x1440 logical)
+PASS  hide removes the surface
+PASS  focus returns to the same window after hide
+PASS  workspace unchanged after hide
+warm open to first frame built (ms), n=20 of 20: p50=33.3 p95=40.5 max=50.1
+PASS  every warm open rendered a frame (20 of 20)
+PASS  warm open p95 <= 150 ms (plan budget; first frame built, not displayed)
+PASS  51 concurrent toggles all answered (failures: 0)
+PASS  odd burst settles visible with exactly one surface
+PASS    ...and still exactly one after settling
+PASS  even burst (101 total) stays visible with one surface (failures: 0)
+PASS  hidden after bursts
+PASS  focus unchanged after bursts
+PASS  show --output eDP-1 lands on eDP-1
+PASS  unknown output is rejected
+PASS  rejected output opens nothing
+PASS  fullscreen fixture is fullscreen (mode 2 on workspace 93)
+PASS  overlay opens over the fullscreen workspace
+PASS  returned to workspace 4
+inspect /home/jason/coding/orbit/docs/evidence/orb-003/djinn/stacking-fullscreen.png: the Orbit overlay must cover the fullscreen fixture
+PASS  killed daemon leaves no surface
+PASS  focus returns after a crash
+PASS  daemon restarts over the stale socket
+PASS  quit is acknowledged
+PASS  daemon exits on quit
+PASS  socket removed on quit
+manual: run 'orbit daemon &', then 'orbit show' from a terminal, press Escape, and type at once; keys must reach the terminal
+failures: 0

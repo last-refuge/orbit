@@ -1,0 +1,269 @@
+{
+  "label": "visible-fullscreen",
+  "hyprland_version": "v0.56.2",
+  "address_mapping": true,
+  "toplevels_listed": 21,
+  "rss_kib_before": 6440,
+  "rss_kib_after": 28824,
+  "windows": [
+    {
+      "name": "floating",
+      "address": "0x55966de15ce0",
+      "placement": {
+        "workspace": "92",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.286712,
+        "p95": 0.431344,
+        "max": 0.754308
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 6.3728489999999995,
+        "p95": 6.813513,
+        "max": 7.479367
+      },
+      "convert_ms": {
+        "p50": 1.6282429999999999,
+        "p95": 2.120434,
+        "max": 2.6069639999999996
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "fullscreen",
+      "address": "0x55966dd95c20",
+      "placement": {
+        "workspace": "93",
+        "workspace_visible": true,
+        "floating": true,
+        "fullscreen": true,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 2.699983,
+        "p95": 3.369586,
+        "max": 3.702561
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 2880,
+      "height": 1800,
+      "stride": 11520,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 20736000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 23.909905,
+        "p95": 25.072135999999997,
+        "max": 30.390677
+      },
+      "convert_ms": {
+        "p50": 17.356256000000002,
+        "p95": 22.353852,
+        "max": 24.389625000000002
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#11172a"
+      },
+      "own_accent_fraction": 0.009008487654320987,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "special",
+      "address": "0x55966e6612b0",
+      "placement": {
+        "workspace": "special:orbitfx",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": []
+      },
+      "setup_ms": {
+        "p50": 0.458179,
+        "p95": 0.6826599999999999,
+        "max": 0.7004980000000001
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.352392999999999,
+        "p95": 7.8524460000000005,
+        "max": 8.356071
+      },
+      "convert_ms": {
+        "p50": 0.445322,
+        "p95": 1.247272,
+        "max": 1.501657
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-a",
+      "address": "0x55966e2a3290",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-b"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.468557,
+        "p95": 0.5451170000000001,
+        "max": 0.551414
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.417112,
+        "p95": 7.850005,
+        "max": 9.346233
+      },
+      "convert_ms": {
+        "p50": 0.469821,
+        "p95": 0.5526840000000001,
+        "max": 0.616877
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#151a33"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    },
+    {
+      "name": "tiled-b",
+      "address": "0x55966df0f9c0",
+      "placement": {
+        "workspace": "91",
+        "workspace_visible": false,
+        "floating": true,
+        "fullscreen": false,
+        "xwayland": false,
+        "hidden": false,
+        "grouped": false,
+        "overlaps": [
+          "tiled-a"
+        ]
+      },
+      "setup_ms": {
+        "p50": 0.5339579999999999,
+        "p95": 0.613444,
+        "max": 0.878333
+      },
+      "shm_formats": [
+        "Argb8888",
+        "Xrgb8888"
+      ],
+      "dmabuf_formats": 2,
+      "width": 600,
+      "height": 400,
+      "stride": 2400,
+      "format": "Argb8888",
+      "transform": "Normal",
+      "buffer_bytes": 960000,
+      "captures": 20,
+      "failures": [],
+      "capture_ms": {
+        "p50": 7.172958,
+        "p95": 7.768403999999999,
+        "max": 9.428647999999999
+      },
+      "convert_ms": {
+        "p50": 0.5408430000000001,
+        "p95": 0.615543,
+        "max": 0.624377
+      },
+      "repeat_without_damage": "waits for damage (none within 250ms)",
+      "stats": {
+        "lit_fraction": 1.0,
+        "transparent_fraction": 0.0,
+        "mean_rgb": "#121f34"
+      },
+      "own_accent_fraction": 0.04125,
+      "other_accent_fraction": 0.0,
+      "verdict": "ok"
+    }
+  ]
+}

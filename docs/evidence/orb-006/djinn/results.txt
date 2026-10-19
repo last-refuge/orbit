@@ -1,0 +1,36 @@
+PASS  fixtures present
+PASS  daemon connects to Hyprland while hidden
+PASS  open: overview visible on the active workspace
+PASS  open: focused window selected (if it is on this workspace)
+PASS  inspect: rail lists the fixture workspaces
+PASS  inspect: arrows preview 91 without switching
+PASS  inspect: 91 shows both tiled fixtures
+PASS  inspect: the real workspace did not change
+PASS  inspect: previews requested for the 91 cards
+PASS  inspect: previews captured for the fixture cards
+PASS  drag: tiled-a confirmed on 92
+PASS  drag: Hyprland shows tiled-a on 92
+PASS  drag: focus and workspace unchanged (silent move)
+PASS  drag: overview stays open
+PASS  drag onto its own workspace does nothing
+PASS  keys: select tiled-b
+PASS  keys: Ctrl+Shift+M opens the move menu for tiled-b
+PASS  keys: choose 93
+PASS  keys: tiled-b confirmed on 93
+PASS  keys: Hyprland shows tiled-b on 93
+PASS  keys: focus unchanged
+PASS  follow: preview 92
+PASS  follow: select the floating fixture
+PASS  follow: move menu open for the floating fixture
+PASS  follow: choose 93
+PASS  follow: floating confirmed on 93, then the overview closes
+PASS  follow: Hyprland shows the floating fixture on 93
+PASS  follow: it has focus
+PASS  follow: its workspace is active
+PASS  select: reopens on the now active 93
+PASS  select: click closes the overview
+PASS  select: tiled-b has focus
+PASS  select: its workspace 93 is active
+PASS  close: Escape dismisses
+PASS  close: focus stays on tiled-b
+PASS  close: no move left pending

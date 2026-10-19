@@ -1,0 +1,41 @@
+# Orbit settings. Every key has a default; delete a key to get it back.
+# Edited by the Orbit settings window and `orbit config`; hot-reloaded.
+
+[appearance]
+blur = 7
+reduced_motion = false
+theme = "auto"
+tint_percent = 100
+
+[behaviour]
+close_on_activate = true
+double_tap_last_window = false
+follow_on_move = false
+search_scope = "all"
+
+[hot_corner]
+corner = "off"
+corner_closes = true
+dwell_ms = 250
+monitors = "primary"
+
+[icons]
+theme = ""
+
+[layout]
+columns = "auto"
+rail = "top"
+special_workspaces = true
+titles = "selected"
+
+[previews]
+capture_inactive_workspaces = false
+never_capture = []
+refresh_ms = 400
+
+[shortcut]
+key = "Tab"
+mods = ["SUPER"]
+
+[startup]
+launch_at_login = false

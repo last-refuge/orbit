@@ -1,0 +1,27 @@
+{
+  "tool": "Built-in image_gen",
+  "reference": "../Orbit Desktop Brand Guide.png",
+  "notes": "Generated raster adaptations of the supplied brand guide, not vector source exports. Transparent white-text attempts were discarded due to visible artifacts; the white wordmark is supplied on an opaque midnight background.",
+  "assets": [
+    {
+      "file": "orbit-symbol.png",
+      "background": "transparent",
+      "prompt": "Use case: background-extraction. Input image is the edit target: the supplied Orbit Desktop Brand Guide. Create one standalone high-resolution PNG of ONLY the full-color Orbit orbital symbol, as shown in the guide's large LOGO panel at middle-left and hero at top-left. Preserve the exact recognizable design and proportions: thick open circular ribbon with cyan/blue highlights at upper left, deep blue and violet lower arc, slender elliptical orbit sweeping diagonally from lower left to upper right, coral/amber endpoint and small warm glowing orb near upper right. Faithfully isolate the existing logo; do not redesign, add rings, add stars, add a planet sphere, or alter the shape. Remove all surrounding text, panels, typography, backgrounds, and cast shadows outside the mark. Center the full symbol on a square canvas with about 10% transparent padding and crisp antialiased edges. The entire background and all negative spaces inside the symbol must be actual transparent alpha. No wordmark, no labels, no checkerboard painted into the image."
+    },
+    {
+      "file": "orbit-logo-dark.png",
+      "background": "transparent; dark text for light surfaces",
+      "prompt": "Use case: background-extraction / compositing. Image 1 is the source Orbit brand guide; Image 2 is the standalone orbital symbol to preserve exactly. Create ONE standalone horizontal full-color Orbit logo lockup on actual transparent alpha. Match the large LOGO lockup in the middle-left of Image 1: orbital symbol on the left, the exact word \"Orbit\" in near-black Midnight #0B1020 bold clean Inter-style sans serif on the right. Preserve the symbol in Image 2 unchanged: same shape, orientation, gradients, warm orb, and diagonal orbit. Keep source guide typography, proportions, letter spacing, and generous symbol-to-word spacing. The symbol is taller than the word. High-resolution wide canvas, approximately 2.7:1 aspect ratio, 8% transparent padding, the entire mark and word completely visible. No taglines, labels, guide panels, bounding box, backdrop, shadows, or extra symbols. All negative spaces and background truly transparent. Crisp production-quality edges."
+    },
+    {
+      "file": "orbit-logo-midnight.png",
+      "background": "opaque midnight; white text",
+      "prompt": "Use case: precise-object-edit. Use this Orbit logo lockup as the edit target. Preserve the full-color orbital symbol on the left, the clean typeface and exact word \"Orbit\", layout, sizes and spacing. Change the dark word Orbit to solid white. Place the entire logo on a perfectly flat opaque midnight navy background #0B1020. This image is NOT transparent. All background areas, including letter counters and spaces between the letters, must be perfectly clean solid midnight navy. White letter contours must be sharp and smooth like typeset Inter bold, without any stray white blobs, texture, scratches, or halos. Produce a high-resolution horizontal logo lockup matching the original guide dark-background variation. No tagline, no labels, no additional marks. Maintain generous padding."
+    },
+    {
+      "file": "orbit-app-icon.png",
+      "background": "dark rounded tile; transparent outside tile",
+      "prompt": "Use case: background-extraction / compositing. Image 1 is the Orbit brand guide. Image 2 is the standalone orbital symbol to preserve exactly. Produce ONE standalone high-resolution square Orbit application icon, faithfully matching the APP ICON panel at middle-right of the guide. Use the full-color orbital symbol from Image 2 centered on a deep Midnight #0B1020 rounded-square tile with the same subtle dark depth and restrained edge highlight as the reference. Symbol occupies approximately 78% of the tile width. Keep the original recognizable logo shape, cyan blue violet gradients, diagonal orbit and coral amber accent. Rounded square tile occupies 88% of the image, evenly centered with transparent margin outside it. Opaque dark tile inside, actual transparent alpha outside rounded corners and around tile. Crisp clean asset, no cast shadow outside tile, no pedestal, no text or labels, no grid, no brand-guide panels. This is the existing Orbit icon isolated, not a redesign."
+    }
+  ]
+}

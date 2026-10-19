@@ -1,0 +1,84 @@
+windowtitle>>55966dd95c20
+windowtitlev2>>55966dd95c20,<redacted len=21 id=ca4571d2>
+windowtitle>>55966e2ac360
+windowtitlev2>>55966e2ac360,<redacted len=24 id=3d622d7d>
+windowtitle>>55966e6612b0
+windowtitlev2>>55966e6612b0,<redacted len=21 id=e2dfdfa5>
+windowtitle>>55966ddf5cd0
+windowtitlev2>>55966ddf5cd0,<redacted len=22 id=ddd0d8a2>
+windowtitle>>55966ddbc3d0
+windowtitlev2>>55966ddbc3d0,<redacted len=21 id=45cffe3b>
+createworkspace>>91
+createworkspacev2>>91,91
+openwindow>>55966dd95c20,91,dev.orbit.fixture.tiled-a,<redacted len=21 id=ca4571d2>
+activewindow>>google-chrome,<redacted len=31 id=214990af>
+activewindowv2>>55966e06c320
+createworkspace>>special:orbitfx
+createworkspacev2>>-98,special:orbitfx
+openwindow>>55966ddbc3d0,special:orbitfx,dev.orbit.fixture.special,<redacted len=21 id=45cffe3b>
+activewindow>>google-chrome,<redacted len=31 id=214990af>
+activewindowv2>>55966e06c320
+createworkspace>>92
+createworkspacev2>>92,92
+openwindow>>55966ddf5cd0,92,dev.orbit.fixture.floating,<redacted len=22 id=ddd0d8a2>
+activewindow>>google-chrome,<redacted len=31 id=214990af>
+activewindowv2>>55966e06c320
+openwindow>>55966e6612b0,91,dev.orbit.fixture.tiled-b,<redacted len=21 id=e2dfdfa5>
+activewindow>>google-chrome,<redacted len=31 id=214990af>
+activewindowv2>>55966e06c320
+createworkspace>>93
+createworkspacev2>>93,93
+openwindow>>55966e2ac360,93,dev.orbit.fixture.fullscreen,<redacted len=24 id=3d622d7d>
+activewindow>>google-chrome,<redacted len=31 id=214990af>
+activewindowv2>>55966e06c320
+fullscreen>>1
+windowtitle>>55966e06c320
+windowtitlev2>>55966e06c320,<redacted len=23 id=01f9e265>
+activewindow>>google-chrome,<redacted len=23 id=01f9e265>
+activewindowv2>>55966e06c320
+activelayout>><redacted len=39 id=0763ce10>
+activelayout>><redacted len=39 id=0763ce10>
+activewindow>>dev.orbit.fixture.tiled-a,<redacted len=21 id=ca4571d2>
+activewindowv2>>55966dd95c20
+workspace>>91
+workspacev2>>91,91
+activelayout>><redacted len=39 id=0763ce10>
+activelayout>><redacted len=39 id=0763ce10>
+activewindow>>dev.orbit.fixture.fullscreen,<redacted len=24 id=3d622d7d>
+activewindowv2>>55966e2ac360
+workspace>>93
+workspacev2>>93,93
+activelayout>><redacted len=39 id=0763ce10>
+activelayout>><redacted len=39 id=0763ce10>
+activewindow>>google-chrome,<redacted len=23 id=01f9e265>
+activewindowv2>>55966e06c320
+workspace>>2
+workspacev2>>2,2
+activelayout>><redacted len=39 id=0763ce10>
+activelayout>><redacted len=39 id=0763ce10>
+movewindow>>55966ddf5cd0,91
+movewindowv2>>55966ddf5cd0,91,91
+destroyworkspace>>92
+destroyworkspacev2>>92,92
+closewindow>>55966dd95c20
+closewindow>>55966ddbc3d0
+destroyworkspace>>special:orbitfx
+destroyworkspacev2>>-98,special:orbitfx
+closewindow>>55966ddf5cd0
+closewindow>>55966e6612b0
+destroyworkspace>>91
+destroyworkspacev2>>91,91
+closewindow>>55966e2ac360
+fullscreen>>0
+destroyworkspace>>93
+destroyworkspacev2>>93,93
+activewindow>>com.anthropic.Claude,<redacted len=6 id=8737a6e6>
+activewindowv2>>55966e022580
+workspace>>3
+workspacev2>>3,3
+activewindow>>google-chrome,<redacted len=23 id=01f9e265>
+activewindowv2>>55966e06c320
+workspace>>2
+workspacev2>>2,2
+activelayout>><redacted len=39 id=0763ce10>
+activelayout>><redacted len=39 id=0763ce10>

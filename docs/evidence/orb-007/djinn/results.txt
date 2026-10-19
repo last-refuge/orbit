@@ -1,0 +1,109 @@
+PASS  fixtures present
+PASS  daemon connects to Hyprland
+PASS  open: overview visible, focus on the windows
+PASS  open: keyboard focus starts on the windows
+PASS  look: a translucent brand theme, full motion
+PASS  look: the frosted glass theme is the default
+PASS  icons: an icon theme is in use
+PASS  privacy: capture is restricted to fixture windows in test-hooks mode
+PASS  privacy: no desktop backdrop is captured in test-hooks mode (solid fallback)
+PASS  look: the overview uses the bundled Inter
+PASS  rail: every workspace with windows has a cover window
+PASS  rail: only the previewed workspace's windows are captured (tiles elsewhere are outlines)
+PASS  labels: every card names its app and workspace
+PASS  labels: every tile says what it is, in words
+PASS  labels: the active workspace's tile says active
+PASS  labels: the special workspace reads as special
+PASS  labels: the add tile reads as New workspace
+PASS  parity: seven pointer actions each list a keyboard path
+PASS  keys: Tab from the windows goes to search
+PASS  keys: Tab from search goes to the workspaces
+PASS  keys: Tab from the workspaces goes to the windows
+PASS  keys: Shift+Tab goes back to the workspaces
+PASS  keys: Up from the workspaces goes to search
+PASS  keys: Down walks search, workspaces, windows
+PASS  keys: Ctrl+K focuses search
+PASS  pointer: clicking the search field focuses it (same as Ctrl+K)
+PASS  search: typing from the windows starts a search
+PASS  search: finds tiled-a on another workspace
+PASS  search: the real workspace did not change
+PASS  search: results are captured for previews
+PASS  search: arrows in search move the caret, not the selection
+PASS  search: Backspace and End edit the text
+PASS  search: Escape clears the search first
+PASS  search: clearing restores the active workspace's windows
+PASS  search: matches workspace names
+PASS  search: no matches is announced
+PASS  search: Enter with no matches does nothing
+PASS  ime: composing text is marked
+PASS  ime: Enter while composing does not activate
+PASS  ime: the commit replaces the composition
+PASS  keys: the search result is the selected fixture
+PASS  keys: Enter on a remote result closes the overview
+PASS  keys: tiled-b has focus
+PASS  keys: its workspace 91 is active
+PASS  pointer: reopen
+PASS  pointer: tiled-a found
+PASS  pointer: clicking the result closes the overview
+PASS  pointer: tiled-a has focus
+PASS  move: reopen
+PASS  move: tiled-a selected
+PASS  move: Ctrl+Shift+M opens the menu for tiled-a
+PASS  move: typing filters destinations, not the search
+PASS  move: the filter focuses 93
+PASS  move: tiled-a confirmed on 93
+PASS  move: Hyprland shows tiled-a on 93
+PASS  move: the overview stays open (silent move)
+PASS  pointer: preview 93, where tiled-a now is
+PASS  pointer: Shift-drop moves and follows, then closes
+PASS  pointer: Hyprland shows tiled-a on 92
+PASS  pointer: tiled-a has focus after the follow
+PASS  escape: reopen
+PASS  escape: a fixture is selected
+PASS  escape: menu open
+PASS  escape: first closes the move menu
+PASS  escape: then clears the search
+PASS  escape: then dismisses
+PASS  a11y: reopen
+SKIP  a11y: no assistive technology connected, so no tree to check (see native review)
+PASS  layout: reopen
+PASS  layout: the overview reports its layout
+PASS  layout: the surface is full screen with no panel element
+PASS  layout: no desktop backdrop in test mode (solid glass)
+PASS  layout: hints are hidden until asked for
+PASS  layout: three columns with three or more windows, two below
+PASS  layout: cards fill the width (three span at least 85% of the inner width; two are at the 760 cap) and are multiples of 4
+PASS  layout: the search bar is centered at 56 tall
+PASS  layout: rail tiles are at least 160 wide at full size, in a centered strip
+PASS  layout: the grid rows fit the grid area
+PASS  layout: the search bar lands on whole device pixels
+PASS  hints: Ctrl+/ shows the key hints
+PASS  hints: the hints bar is reported
+PASS  previews: preview workspace 91 (fixtures)
+PASS  previews: every fixture card on 91 has a captured frame
+PASS  privacy: still only fixture windows are captured while previewing 91
+PASS  previews: each card draws its image at the captured device size (one resample)
+PASS  previews: images fit the capture box without upscaling
+PASS  previews: images keep the window's real aspect (within 2%)
+PASS  previews: image origins land on whole device pixels
+PASS  icons: fixture cards fall back to the letter tile (no desktop entry)
+PASS  settings: the scratch settings file was created with every key
+PASS  settings: the daemon reports its settings and no load error
+PASS  shortcut: the chosen shortcut has no conflict and is bound live (or names its conflict)
+PASS  shortcut: Hyprland lists Orbit's bind exactly when the daemon says it is bound
+PASS  shortcut: the generated snippet exists and binds orbit toggle
+PASS  config: set and get round-trip through the file
+PASS  config: bad values are refused
+PASS  hot corner: the daemon picks the change up and puts a corner surface in place
+PASS  hot corner: the surface sits in the output's corner, not below the bar
+PASS  hot corner: resting the pointer there opens the overview
+PASS  hot corner: off removes the surface
+PASS  layout settings: reopen
+PASS  layout settings: four columns and the rail at the bottom apply live
+PASS  settings window: opens on request (orbit settings / the mark / Ctrl+,)
+PASS  look: daemon restarts with --opaque
+PASS  look: the opaque fallback keeps the brand theme
+PASS  look: daemon restarts with --high-contrast --reduced-motion
+PASS  look: high-contrast theme (opaque) and reduced motion are in effect
+PASS  look: daemon restarts with --no-glass
+PASS  look: the denser standard layers can be chosen
