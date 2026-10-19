@@ -1,357 +1,195 @@
-# Orbit
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="crates/orbit-ui/assets/brand/orbit-logo-midnight.png">
+    <img alt="Orbit" src="crates/orbit-ui/assets/brand/orbit-logo-dark.png" width="440">
+  </picture>
+</p>
 
-A higher view for your desktop: a native workspace and window overview for
-Omarchy on Hyprland, written in Rust with GPUI. See
-[`llm-docs/orbit-product-plan.md`](llm-docs/orbit-product-plan.md) for the plan.
+<p align="center"><strong>The workspace overview for Hyprland.</strong><br>
+See every window, find any of them, put them where they belong.</p>
 
-Status: **M0.** ORB-001 to ORB-005 are done (verified on Hyprland 0.56).
-ORB-006 adds the first end-to-end slice: open the overview, inspect a
-workspace, move a window, select one, close. ORB-007 adds the brand system,
-search, accessibility labels and a keyboard path for every pointer action.
+<p align="center">
+  <a href="https://github.com/last-refuge/orbit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/last-refuge/orbit/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/last-refuge/orbit/releases"><img alt="Release" src="https://img.shields.io/github/v/release/last-refuge/orbit?include_prereleases&label=release"></a>
+</p>
 
-## Layout
+<p align="center">
+  <img alt="The Orbit overview: a search bar, the workspace rail and live window cards over a frosted copy of the desktop" src="docs/readme/overview.png" width="900">
+</p>
 
-| Crate | Role |
+Orbit is a resident companion for [Hyprland](https://hypr.land) that opens a
+full-screen overview on a key, a hot corner or a command: your workspaces in a
+rail along the top, every window as a live card below, and a search field that
+finds windows, apps and workspaces as you type. Click a card to bring that
+window forward, drag it onto a workspace to move it there, or do it all from
+the keyboard. It is built for [Omarchy](https://omarchy.org) and works on any
+Hyprland 0.56 session.
+
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/last-refuge/orbit/main/install.sh | bash
+```
+
+The installer puts `orbit` in `~/.local/bin`, the desktop entry and icon under
+`~/.local/share`, and prints what to do next. It never uses `sudo` and never
+edits your Hyprland configuration. When no release matches your machine it
+builds from source with `cargo`. Options go after `bash -s --`, for example
+`--from-source`, `--prefix DIR`, `--version v0.1.0`, or `--uninstall`
+(`--purge` also removes your settings).
+
+Then start it, and press <kbd>Super</kbd>+<kbd>`</kbd>:
+
+```bash
+orbit daemon &
+```
+
+To have it start with every login:
+
+```bash
+orbit config set startup.launch_at_login true
+```
+
+### Requirements
+
+- Hyprland 0.56 or newer (Orbit talks to its Lua-era IPC); Omarchy 4 ships it.
+- A Wayland session with the layer-shell protocol (every Hyprland has one).
+- A Vulkan-capable GPU and driver (Orbit renders with GPUI, the UI framework
+  behind Zed).
+- For live window previews: `ext-image-copy-capture` with the foreign-toplevel
+  source, which Hyprland provides. `orbit doctor` reports what your session
+  supports; without capture Orbit still runs, with placeholder cards.
+
+## Using Orbit
+
+| Do this | And Orbit |
 | --- | --- |
-| `orbit` | Binary, CLI and process lifecycle |
-| `orbit-ui` | GPUI views, focus, accessibility, theme tokens |
-| `orbit-core` | Framework-free model, layout, commands, state transitions |
-| `orbit-hyprland` | Hyprland snapshots, events, typed dispatch, reconciliation |
-| `orbit-capture` | Preview capture protocols, buffers, preview cache |
+| Press <kbd>Super</kbd>+<kbd>`</kbd> (or run `orbit toggle`) | opens the overview on the focused monitor; press again, or <kbd>Esc</kbd>, to close it |
+| Rest the pointer in a screen corner | opens it too, once you pick a corner in the settings (it closes the same way) |
+| Start typing | searches windows, apps and workspaces; <kbd>Enter</kbd> goes to the first match |
+| Click a card | brings that window forward: its workspace, focus, and on top of the floating stack |
+| Drag a card onto a workspace tile | moves the window there and keeps you where you are; hold <kbd>Shift</kbd> to follow it |
+| Arrows, <kbd>Tab</kbd>, <kbd>Enter</kbd> | move between windows, the rail and the search; <kbd>Shift</kbd>+<kbd>Enter</kbd> activates and follows |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | opens the move menu for the selected window; type to filter the destinations |
+| <kbd>Ctrl</kbd>+<kbd>/</kbd> or <kbd>F1</kbd> | shows the key hints |
+| <kbd>Ctrl</kbd>+<kbd>,</kbd>, or the mark at the top left | opens the settings window |
 
-## Pins
+<p align="center">
+  <img alt="Searching for a window: the matching cards remain, each with its workspace" src="docs/readme/search.png" width="900">
+</p>
 
-GPUI, `gpui_platform` and Zed's crates.io patches all come from Zed revision
-`56934ec0560bce8929025497411de7f5322fb6ca` (2026-10-17). `rust-toolchain.toml`
-pins Rust 1.98.1 to match that revision. Bump them together: update `rev` in
-`Cargo.toml`, re-copy the relevant `[patch.crates-io]` entries from Zed's root
-`Cargo.toml`, match its `rust-toolchain.toml`, then rerun every check below.
+## Settings
 
-Only the `wayland` backend is compiled; X11 sessions are out of scope.
+Everything lives in `~/.config/orbit/config.toml`. Change it in the settings
+window, with `orbit config`, or in an editor; the running daemon picks changes
+up within half a second.
 
-## Build and check
+<p align="center">
+  <img alt="The settings window: shortcut, hot corner and appearance sections" src="docs/readme/settings.png" width="640">
+</p>
 
-Arch / Omarchy build dependencies:
+```bash
+orbit config list                        # every key with its current value
+orbit config set hot_corner.corner top-left
+orbit config set shortcut.key F12        # xkb key names; mods are SUPER, SHIFT, CTRL, ALT
+```
 
-    sudo pacman -S --needed rustup base-devel wayland libxkbcommon vulkan-icd-loader fontconfig freetype2
+| Key | Default | What it does |
+| --- | --- | --- |
+| `shortcut.mods`, `shortcut.key` | `["SUPER"]`, `grave` | the shortcut, bound live in Hyprland while the daemon runs (shown as Super+`); a combination another bind already uses is reported, not bound |
+| `hot_corner.corner` | `off` | `top-left`, `top-right`, `bottom-left`, `bottom-right` |
+| `hot_corner.dwell_ms` | `150` | how long the pointer rests there before the overview opens |
+| `hot_corner.corner_closes` | `true` | resting there while it is open closes it |
+| `hot_corner.monitors` | `primary` | the focused monitor, or `all` |
+| `appearance.theme` | `auto` | `auto` is glass when the desktop can be captured; `glass`, `solid`, `high-contrast` |
+| `appearance.blur` | `7` | backdrop blur strength, 1 to 20 |
+| `appearance.tint_percent` | `100` | the brand tint over the backdrop |
+| `appearance.reduced_motion` | `false` | no travel animation; content still fades in |
+| `layout.columns` | `auto` | `auto`, `two`, `three`, `four` |
+| `layout.rail` | `top` | the workspace rail at the `top` or `bottom` |
+| `layout.titles` | `selected` | window titles under the cards: `always`, `selected`, `never` |
+| `layout.special_workspaces` | `true` | special workspaces in the rail |
+| `behaviour.close_on_activate` | `true` | opening a window closes the overview |
+| `behaviour.follow_on_move` | `false` | follow a moved window by default (Shift inverts) |
+| `behaviour.search_scope` | `all` | search `all` windows or only `workspace` |
+| `behaviour.double_tap_last_window` | `false` | pressing the shortcut twice quickly switches to the last window |
+| `previews.refresh_ms` | `400` | how often live previews refresh |
+| `previews.capture_inactive_workspaces` | `false` | capture windows on other workspaces too |
+| `previews.never_capture` | `[]` | window classes that are never captured |
+| `icons.theme` | | icon theme override (your desktop's otherwise) |
+| `startup.launch_at_login` | `false` | a systemd user unit, `orbit.service`, generated and enabled for you |
 
-Then:
+**Keeping the shortcut across Hyprland restarts.** The daemon binds it live
+over IPC, and writes a one-line snippet to `~/.config/hypr/orbit.lua`. To load
+it at startup, `hyprland.lua` needs:
 
-    cargo build --release
-    cargo fmt --all --check
-    cargo clippy --workspace --all-targets -- -D warnings
-    cargo test --workspace
-    scripts/license-inventory.py --check
+```lua
+require("hypr.orbit")
+```
 
-## Smoke checks
+Orbit never edits `hyprland.lua` itself. The settings window offers to append
+that line, shows you exactly what it will write, and does it only when you
+confirm.
 
-On the target host, from a Hyprland session:
+## How it works
 
-    target/release/orbit smoke             # plain window; Escape closes
-    target/release/orbit smoke --overlay   # full-output layer-shell overlay; Escape closes
+- **A layer-shell overlay.** The overview is one full-output surface on the
+  overlay layer, drawn with [GPUI](https://www.gpui.rs) and opened only when
+  asked, so nothing is drawn while it is closed. Opening it is a single IPC
+  request to the resident daemon.
+- **Live previews.** Window cards are real frames from Hyprland through
+  `ext-image-copy-capture`, refreshed while the overview is open and kept only
+  in memory.
+- **Frosted glass, in house.** The backdrop is a capture of your output,
+  blurred and tinted by Orbit's own worker, so the look is the same on every
+  GPU and driver.
+- **Verified moves.** A drag or a menu choice becomes a silent Hyprland
+  dispatch, and Orbit watches Hyprland's own events to confirm it before
+  reporting "Moved".
+- **Bring forward, fast.** A click sends the focus and a raise to the top of
+  the floating stack the instant it lands, re-sends them once the overlay is
+  gone (closing a layer hands focus back), and confirms on Hyprland's events.
+  `orbit state` shows the timings of the last activation.
 
-`--exit-after-ms N` makes either one quit on its own. `scripts/smoke-headless.sh`
-runs both inside a headless sway session and saves screenshots; CI uses it. It
-proves rendering on Wayland, not Hyprland behavior.
+## Building from source
 
-## Overlay lifecycle (ORB-003)
+```bash
+git clone https://github.com/last-refuge/orbit.git
+cd orbit
+cargo build --release          # rust-toolchain.toml pins the toolchain
+target/release/orbit doctor    # what this session supports
+target/release/orbit daemon
+```
 
-    target/release/orbit daemon &          # resident process, hidden at rest
-    target/release/orbit toggle            # on the focused monitor
-    target/release/orbit show --output DP-1
-    target/release/orbit status            # visibility, opens, last open time
-    target/release/orbit hide | quit
+Arch and Omarchy packages Orbit links against: `libxkbcommon`, `wayland`,
+`vulkan-icd-loader`, `fontconfig`, `freetype2`, `zstd` (and `rustup`,
+`base-devel` to build).
 
-The overlay is a full-output, non-reserving `zwlr_layer_shell_v1` surface on
-the overlay layer with exclusive keyboard focus; Escape dismisses it. The
-daemon listens on `$XDG_RUNTIME_DIR/orbit/orbit.sock` in a 0700 directory.
-Requests that arrive together are applied in order and reconciled once, so a
-burst of toggles settles by parity with at most one surface open.
+## Contributing
 
-    scripts/overlay-lifecycle.sh [--stacking]   # automated checks on Hyprland
+Issues and pull requests are welcome. Before opening one:
 
-## Capability report and fixtures
+```bash
+cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+scripts/review-check.sh --fake     # the end-to-end checks against a fake Hyprland
+scripts/review-check.sh            # the same on a real Hyprland session
+```
 
-    target/release/orbit doctor                       # human-readable report
-    target/release/orbit doctor --json                # same, as JSON
-    target/release/orbit doctor --record docs/evidence/doctor/$(hostname)
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) explains the crates, the scripted
+checks and the evidence behind each piece; [docs/](docs/) holds the design
+targets and reviews; [CHANGELOG.md](CHANGELOG.md) tracks releases.
 
-`doctor` reports Orbit and GPUI versions, session variables, Omarchy and
-Hyprland versions, GPUs, monitors, workspace and window counts, and every
-Wayland global with the ones Gates A and B depend on highlighted. `--record`
-also saves each Hyprland snapshot reply as a fixture for tests. Titles,
-initial titles, last-window titles, XDG descriptions and monitor serials are
-replaced with `<redacted len=N id=…>`; ids are keyed per run so they only
-correlate within one recording.
+## Privacy
 
-Owned test windows have the app id `dev.orbit.fixture.NAME`. Tests may move,
-focus or close those and nothing else.
+Window captures stay in memory and are discarded when the overview closes.
+Nothing leaves your machine. `orbit state`, `orbit doctor` and the scripted
+checks never print or record window titles.
 
-    scripts/fixtures.sh spawn     # tiled, floating, fullscreen, special (+ XWayland via xterm)
-    scripts/fixtures.sh list
-    scripts/fixtures.sh clean     # closes fixture windows only
+## Credits
 
-Fixtures open silently on workspaces 91–93 and `special:orbitfx`.
+[Inter](https://rsms.me/inter/) by Rasmus Andersson, bundled under the SIL Open
+Font License 1.1. [GPUI](https://www.gpui.rs) from the [Zed](https://zed.dev)
+editor. Hyprland, for a compositor worth building on.
 
-## Window previews (ORB-004)
-
-    target/release/orbit capture                      # capture and check every fixture
-    target/release/orbit capture --record DIR --label NAME --repeat 20
-    target/release/orbit preview                      # live fixture previews in a window
-    scripts/capture-check.sh                          # all scenarios, on Hyprland
-
-Capture uses `ext-image-copy-capture-v1` with toplevel sources from
-`ext-foreign-toplevel-list-v1` and shared-memory buffers, on its own Wayland
-connection. `hyprland-toplevel-mapping-v1` maps each toplevel to its Hyprland
-window address. In the ORB-004 checks only Orbit's own windows (fixtures and
-the preview) are ever captured; titles are never read into the capture
-state. The running overview captures the windows it shows and, since
-ORB-008, one frame of the output for its backdrop (see "Brand fidelity").
-
-`capture` checks each frame against the fixture's known look (Slate card,
-accent border), so a black frame or another window's pixels fail the run.
-`preview` keeps one session per window, converts and downscales off the UI
-thread to at most 640x400, and frees each replaced texture from GPUI's atlas.
-The protocol flow is covered by `crates/orbit-capture/tests/fake_compositor.rs`,
-an in-process compositor speaking the same protocols.
-
-## State and reconciliation (ORB-005)
-
-`orbit-core::Store` is a synchronous, deterministic state machine. Adapters
-feed it events, query answers, dispatch results and a millisecond clock; it
-returns effects (queries to run, requests to send, finished operations).
-
-- Identity: an epoch per compositor connection, and windows as address plus
-  a local generation, because addresses are reused. Input from an older
-  epoch or for a replaced window is rejected.
-- Sync: events never replay over a query answer. If events touch a kind
-  while its query is in flight, that kind is queried again once the answer
-  lands. Lost events (`on_gap`) and buffer overflow force a full query.
-- Moves: one typed request per window at a time (later ones queue), pending
-  until the compositor state shows the window on the destination. Events
-  count only after the compositor accepted the request (adapters deliver all
-  readable events before reporting it); a timeout re-queries and either
-  confirms or fails with `NotObserved`. Windows known only from an open event
-  can't be moved until a query confirms their identity.
-
-`crates/orbit-core/tests/simulation.rs` runs seeded chaos (lost and late
-events, stale answers, lost acks, rejected requests, address reuse) and checks
-convergence, exactly-once completion and that every confirmed move happened.
-
-    target/release/orbit events --duration-ms 10000    # titles redacted
-    scripts/record-events.sh                            # records a replay fixture
-
-## The overview slice (ORB-006)
-
-`orbit daemon` now keeps the store live from Hyprland while hidden, and
-`orbit show`/`toggle` open the overview: a workspace rail above window cards
-for the previewed workspace, with live previews from the capture worker.
-
-- Open, inspect: opens on the invoking monitor's workspace with the focused
-  window selected. Tab moves between the grid and the rail; arrows in the
-  rail preview a workspace without switching to it. (ORB-007 adds search to
-  the Tab order; see below.)
-- Move: drag a card onto a workspace tile, or Ctrl+Shift+M, choose, Enter.
-  Moves are silent; Shift on drop or Shift+Enter moves and follows (focus
-  goes to the window once the move is confirmed). Cards show "Moving to…"
-  until the store confirms; failures are announced, never redirected.
-- Select: Enter or a click on a card focuses that window (switching to its
-  workspace) and closes; a click on a tile switches workspace.
-- Close: Escape (it first leaves the move menu).
-
-Control goes through `orbit-hyprland::control`: typed requests with the
-window always named explicitly (a Lua dispatch without one acts on the
-focused window), Lua syntax on 0.56+ and hyprlang dispatchers before.
-Hyprland answers `ok` even for an address that does not exist, so moves are
-confirmed from state, not from the reply.
-
-    scripts/slice-check.sh               # on Hyprland, fixture windows only
-    scripts/slice-check.sh --fake        # against scripts/fake-hyprland.py
-
-The check starts `orbit daemon --test-hooks`, whose `orbit drive` requests
-feed keys, clicks and drags through GPUI's input dispatch, and compares the
-result with `hyprctl`. Results go to `docs/evidence/orb-006/<host>/`.
-
-## Brand, search and keyboard (ORB-007)
-
-The overview follows the brand guide's layout: the wordmark, a search field
-above the workspace rail, and the window grid. Colors come from the guide's
-tokens by role (`orbit_ui::theme::Theme`); unit tests check text at 4.5:1
-and selection/focus boundaries at 3:1 on every surface they sit on. The
-face is the bundled Inter (see ORB-008 below).
-
-- Search: Ctrl+K, a click on the field, or just typing anywhere. It matches
-  app names, classes, titles and workspace names across every workspace,
-  best first; results show their workspace and monitor, and Enter (or a
-  click) focuses the window, switching to its workspace. Arrows in the field
-  move the caret; Enter waits while an input method is composing.
-- Keys: Tab / Shift+Tab cycle search → workspaces → windows; arrows move
-  within a region and between them (Up from the first row of windows reaches
-  the rail, Up from the rail reaches search); Home/End jump to the ends.
-  Ctrl+Shift+M opens "Move to workspace", where typing filters destinations.
-  Escape cancels a drag, then the move menu, then the search, then closes.
-  `orbit_core::KEYBOARD_PATHS` lists each pointer action with its keys.
-- States: selection is a violet ring, glowing while keyboard focus is in
-  the grid; a focused tile gets a sky ring; the active workspace has a
-  dot, and tiles say "Active" or "Previewing" in their accessible label
-  and in a caption on the focused tile. The selected card shows its title.
-  Window states (floating, fullscreen, XWayland) are in the accessible
-  label only.
-- Accessibility: tiles, cards, previews and the search field have roles and
-  labels (app, full title, workspace, monitor, badges); the keyboard
-  selection is the accessible focus; the status line is a polite live
-  region for previews, results, moves and failures.
-- `orbit daemon --high-contrast` uses a black canvas with brighter borders
-  and text; `--reduced-motion` drops the entry travel (content still fades
-  in over 180 ms).
-
-    scripts/review-check.sh              # on Hyprland, fixture windows only
-
-`orbit drive` gains `type`, `compose`/`commit` (input-method text),
-`click-search`, `drag … follow` (Shift-drop) and `a11y` (a label-free
-summary of the accessibility tree, which GPUI only builds while assistive
-technology is connected). Results go to `docs/evidence/orb-007/<host>/`.
-The native visual and screen-reader review is manual.
-
-Not yet: a monitor selector in the Tab order (multi-monitor is M3). Real
-app icons arrived with ORB-008.
-
-Reviewed natively by Jason 2026-10-19: behaviour accepted; visual fidelity
-to the brand guide moved to ORB-008 (M2), ahead of the installable alpha
-(now ORB-009).
-
-## Brand fidelity (ORB-008)
-
-Round 3 makes the overview the brand guide's hero at Mission Control's
-level of finish (the round-1 review and the round-2/3 results are in
-`docs/orb-008-design-review-findings.md`; the targets and how each is
-checked are in `docs/orb-008-design-targets.md`):
-
-- Surface: the whole output is frosted glass. On open the capture worker
-  takes **one** capture of the output (`ext-image-copy-capture` with an
-  output source), point-samples it to a sixth, blurs it (three box passes,
-  about 4 ms) and hands it to the overview, which draws it edge to edge
-  under the brand tint with a lit top edge. The capture lives only in
-  memory for that open and is replaced on the next one; nothing is written
-  to disk. If output capture is unavailable the glass is a solid Slate
-  under the same tint. With `--test-hooks` (every scripted run) the
-  desktop is never captured and the solid is used, so no desktop content
-  can enter the evidence. `--no-glass` keeps the denser layers,
-  `--opaque` and `--high-contrast` are unchanged.
-- Layout, at the hero's proportions: search bar (1280 x 56, centered,
-  radius 18), the workspace rail under it, and a fixed three-column grid
-  of bare window previews filling the rest (two columns for one or two
-  windows). Cards grow to fill the width (684 at 2304 logical, up to 760),
-  rows fill the height and scroll past it, a partial last row is centered.
-  Every size is a multiple of 4 logical px and origins land on whole
-  device pixels at 1.25x.
-- Previews are captured once to the device box they are drawn in and
-  drawn at exactly that size (no second resample, no upscaling), at the
-  window's real aspect, with radius 16, a one-device-pixel edge and a soft
-  drop shadow; no frame fill. Under each: the app's real icon (36 px) and
-  its name (18 px SemiBold), aligned with the image's left edge; the title
-  only on the selected card.
-- Motion: on open the previews fly from their windows' real screen
-  rectangles (Hyprland's `at`/`size`) into the grid over 220 ms ease-out
-  while the glass fades in; on close or activation they fly back and the
-  layer closes after the animation (the focus hand-off still waits for the
-  layer to close, so it is delayed by at most that). `--reduced-motion`
-  keeps the fade only.
-- Rail: the guide's strip of 176 x 112 tiles with the workspace number
-  under each, the previewed one ringed violet, the keyboard-focused one
-  sky, the active one dotted. Each tile is the desktop composited small:
-  the frosted backdrop with the workspace's windows placed from their real
-  geometry, filled with the previews already captured (the previewed
-  workspace's) and drawn as outlines elsewhere, so no window off the
-  previewed workspace is captured. With more workspaces than fit, the strip
-  scrolls to keep the previewed or focused tile in view; every workspace
-  stays reachable with the arrows.
-- Chrome: none inside the hero's frame. State badges, the place label and
-  the key hints are gone from the surface; states live in the accessible
-  labels, hints appear behind Ctrl+/ (or F1), and only failures and the
-  compositor link show as a toast (announcements still go to the live
-  region).
-- Icons: the window class is matched to an XDG desktop entry (file id,
-  `StartupWMClass`, reverse-DNS segment, name) and its icon looked up in
-  the icon theme (GTK settings, then the GNOME setting Omarchy writes, then
-  hicolor and pixmaps), cached per class; a Gray letter tile is the
-  fallback (`orbit_ui::icons`).
-- Type: Inter 4.1 is bundled (`crates/orbit-ui/assets/fonts/inter/`, SIL
-  Open Font License 1.1, license text alongside) and registered with GPUI at
-  startup, so the overview uses it whatever is installed; Adwaita Sans is
-  the fallback if loading fails. Only the static Regular, Medium, SemiBold
-  and Bold faces are vendored, copied unchanged out of the release's
-  `Inter.ttc`: GPUI's Linux text system does not apply variable-font axes.
-  Scale: 18 (names), 17 (search), 15 (rail), 13 (secondary).
-- The hand-traced mark and app icon drafts stay in `crates/orbit-ui/assets/`
-  (see its README) but do not appear in the overview.
-
-`orbit drive layout` reports the last frame's layout (search, rail and
-grid areas; columns, card and slot sizes; each preview's drawn size
-against its texture and the window's aspect; whether a desktop backdrop is
-in use; no titles). `scripts/review-check.sh` checks the measurable
-targets with it and saves the JSON under `docs/evidence/orb-008/<host>/`.
-
-## Settings and engagement (ORB-010)
-
-Everything a person may want to change lives in
-`$XDG_CONFIG_HOME/orbit/config.toml` (every key has a default; the file is
-written on first run), edited by the settings window or `orbit config`, and
-hot-reloaded by the daemon within half a second:
-
-    target/release/orbit settings                      # the settings window
-    target/release/orbit config list | path
-    target/release/orbit config get hot_corner.corner
-    target/release/orbit config set hot_corner.corner top-left
-
-- The **mark** at the top left of the overview is the settings entry
-  (hover for the tooltip; click or Ctrl+, opens the window and closes the
-  overview). It is the brand lockup: the symbol and the wordmark from
-  Jason's brand files in `crates/orbit-ui/assets/brand/` (the wordmark is
-  cut from the lockup at load and tinted to the theme's text colour).
-- **Shortcut.** Wayland clients cannot grab global keys, so the bind is
-  Hyprland's: the daemon binds it live over IPC (`hl.bind` through
-  `hyprctl eval`, released on quit) and keeps a generated snippet at
-  `$XDG_CONFIG_HOME/hypr/orbit.lua` so it survives restarts once
-  `hyprland.lua` has `require("hypr.orbit")`. Orbit never edits
-  `hyprland.lua` itself: the settings window shows the line and appends it
-  only after an explicit confirmation that shows exactly what will be
-  written. The default is Super+` (`grave`), or, when that is taken, the
-  first of Super+Shift+grave and Super+Ctrl+Tab that nothing else uses
-  (Super+Tab is never offered: Omarchy binds it); a combination another
-  bind already uses is reported and not bound. The
-  window records a new combination from a key press.
-- **Hot corner.** Hyprland has none, so Orbit keeps a 2x2 px transparent
-  layer surface in the chosen corner of the focused (or every) monitor;
-  resting the pointer there for the dwell (150 ms) with no button held
-  opens the overview, and, when "corner also closes" is on, resting there
-  while it is open closes it.
-- **Appearance:** auto/glass/solid/high-contrast, blur strength, tint
-  strength (under 100 % the contrast guarantee over a bright wallpaper no
-  longer holds), reduced motion. **Layout:** columns (auto/2/3/4), window
-  titles (always/selected/never), special workspaces in the rail, rail at
-  the top or bottom. **Behaviour:** follow a moved window by default,
-  close on activate, search scope, double tap of the shortcut switches to
-  the last window. **Previews:** refresh rate, capture other workspaces
-  (real content in every rail tile), classes never captured. **Icons:**
-  icon theme override. **Startup:** launch at login through a generated
-  systemd user unit (`orbit.service`, opt-in).
-- The command-line flags (`--no-glass`, `--opaque`, `--high-contrast`,
-  `--reduced-motion`) still override the file, which scripted checks rely
-  on; `ORBIT_CONFIG` points the daemon and `orbit config` at another file
-  (the checks use a scratch one, so they never touch your settings).
-
-`scripts/review-check.sh` covers the file round trip, the live bind (or
-its reported conflict), the snippet, the hot corner surface and its
-engagement through `orbit drive hot-corner`, live layout changes and the
-settings window. Evidence: `docs/evidence/orb-010/djinn/settings-window.png`.
-
-## Dependencies and licenses
-
-`crates/orbit-capture/protocols/` vendors Hyprland protocol XML unmodified
-(BSD-3-Clause, notice inside each file). `crates/orbit-ui/assets/fonts/inter/`
-vendors Inter 4.1 (OFL-1.1). The inventory lists both.
-
-`deny.toml` holds the license and source policy (`cargo deny check`).
-`docs/dependency-inventory.md` is generated by `scripts/license-inventory.py`
-and must be regenerated whenever `Cargo.lock` changes.
+Orbit is licensed under Apache-2.0.
