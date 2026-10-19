@@ -117,9 +117,17 @@ mkdir -p "$bin_dir" "$share_dir"
 
 # --- a release tarball -------------------------------------------------------
 
+# The newest release, pre-releases included (GitHub's releases/latest
+# never returns a pre-release, and the early builds are all pre-releases).
 latest_tag() {
-    curl -fsSL -H 'Accept: application/vnd.github+json' "$API_BASE/releases/latest" 2>/dev/null \
-        | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1
+    local tag
+    tag=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$API_BASE/releases?per_page=1" 2>/dev/null \
+        | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)
+    if [ -z "$tag" ]; then
+        tag=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$API_BASE/releases/latest" 2>/dev/null \
+            | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)
+    fi
+    printf '%s' "$tag"
 }
 
 install_release() {
