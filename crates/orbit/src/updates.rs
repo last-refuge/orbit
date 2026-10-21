@@ -702,6 +702,16 @@ pub fn cli(args: &[String]) -> Result<String, String> {
             let outcome = checker(&settings).check(&mut state, true)?;
             state.save()?;
             tell_daemon("reload");
+            if let Some(info) = InstallInfo::load()
+                && !info.installed_version.is_empty()
+                && info.installed_version != current()
+            {
+                eprintln!(
+                    "note: the install marker says {} but this binary is {}; the marker is informational and is set right by the next update",
+                    info.installed_version,
+                    current()
+                );
+            }
             Ok(match outcome {
                 Outcome::Available(latest) => format!(
                     "orbit {}; {} is available ({})\nInstall it: orbit update apply",

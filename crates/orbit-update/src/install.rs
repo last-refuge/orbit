@@ -26,6 +26,10 @@ pub struct InstallInfo {
 pub struct Install {
     pub prefix: PathBuf,
     pub binary: PathBuf,
+    /// The marker file to keep current (`None`: no marker is written,
+    /// which is what the unit tests want: they must never touch the
+    /// machine's own `install.json`).
+    pub marker: Option<PathBuf>,
 }
 
 impl Install {
@@ -35,6 +39,22 @@ impl Install {
 
     pub fn share(&self) -> PathBuf {
         self.prefix.join("share")
+    }
+
+    /// Records `version` as what is installed now, in this install's
+    /// marker (and nowhere else).
+    pub fn record(&self, version: &str) -> Result<(), String> {
+        let Some(path) = &self.marker else {
+            return Ok(());
+        };
+        let mut info = InstallInfo::load_from(path).unwrap_or(InstallInfo {
+            method: "release".into(),
+            prefix: self.prefix.display().to_string(),
+            ..InstallInfo::default()
+        });
+        info.installed_version = version.to_owned();
+        info.installed_at = crate::now();
+        info.save_to(path)
     }
 }
 
@@ -101,7 +121,11 @@ impl InstallInfo {
                 binary.display()
             ));
         }
-        Ok(Install { prefix, binary })
+        Ok(Install {
+            prefix,
+            binary,
+            marker: Self::path(),
+        })
     }
 }
 
@@ -124,6 +148,26 @@ mod tests {
         };
         let install = InstallInfo::updatable(Some(&info), &exe).unwrap();
         assert_eq!(install.binary, exe);
+        // record() writes the install's own marker only; with none, nothing.
+        let marker = dir.join("marker.json");
+        let scoped = Install {
+            marker: Some(marker.clone()),
+            ..install.clone()
+        };
+        scoped.record("0.1.0-alpha.9").unwrap();
+        let written = InstallInfo::load_from(&marker).unwrap();
+        assert_eq!(written.installed_version, "0.1.0-alpha.9");
+        assert_eq!(written.method, "release");
+        assert!(written.installed_at > 0);
+        let unscoped = Install {
+            marker: None,
+            ..install.clone()
+        };
+        unscoped.record("9.9.9").unwrap();
+        assert_eq!(
+            InstallInfo::load_from(&marker).unwrap().installed_version,
+            "0.1.0-alpha.9"
+        );
         assert_eq!(install.previous(), bin.join("orbit.prev"));
         assert_eq!(install.share(), dir.join("share"));
         assert!(

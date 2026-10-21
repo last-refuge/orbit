@@ -14,11 +14,7 @@ use std::{
     process::Command,
 };
 
-use crate::{
-    client::Http,
-    install::{Install, InstallInfo},
-    state::Latest,
-};
+use crate::{client::Http, install::Install, state::Latest};
 
 /// What `apply` did.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -121,10 +117,8 @@ fn stage_and_swap(
             String::from_utf8_lossy(&out.stderr).trim()
         );
     }
-    if let Some(mut info) = InstallInfo::load() {
-        info.installed_version = latest.version.clone();
-        info.installed_at = crate::now();
-        let _ = info.save();
+    if let Err(error) = install.record(&latest.version) {
+        log::warn!("recording the installed version: {error}");
     }
     Ok(Applied {
         version: latest.version.clone(),
@@ -148,9 +142,8 @@ pub fn rollback(install: &Install) -> Result<String, String> {
         return Err(format!("restoring the previous binary: {e}"));
     }
     let _ = fs::remove_file(&broken);
-    if let Some(mut info) = InstallInfo::load() {
-        info.installed_version = version.clone();
-        let _ = info.save();
+    if let Err(error) = install.record(&version) {
+        log::warn!("recording the installed version: {error}");
     }
     Ok(version)
 }
@@ -276,6 +269,7 @@ mod tests {
         let install = Install {
             prefix: prefix.clone(),
             binary: binary.clone(),
+            marker: None,
         };
         let latest = Latest {
             version: "0.1.0-alpha.2".into(),
