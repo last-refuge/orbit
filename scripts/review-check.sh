@@ -301,6 +301,12 @@ key escape
 must "pointer: preview 93, where tiled-a now is" preview 93
 guard "$a"
 drive drag "$a" 92 follow
+# The ghost shrinks toward its in-tile size as the pointer reaches the rail
+# (ORB-012). The drive path dispatches the moves without a frame between
+# them, so the record is from whatever frame the ghost last drew; when one
+# exists it must fit inside a tile and be past the halfway point.
+check "drag: the ghost recorded during the drag fits inside a rail tile (or no frame was drawn mid-drag)" \
+    bash -c 'g=$("$0" drive layout | jq -c ".ghost"); [ "$g" = null ] || jq -e --argjson g "$g" "$g.width <= 176 and $g.height <= 112 and $g.progress > 0.5" <<<"$g" >/dev/null' "$orbit"
 check "pointer: Shift-drop moves and follows, then closes" closed
 check "pointer: Hyprland shows tiled-a on 92" test "$(workspace_of "$a")" = 92
 check "pointer: tiled-a has focus after the follow" focused "$a"

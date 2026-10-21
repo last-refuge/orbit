@@ -372,10 +372,45 @@ pub struct DraggedWindow {
     app: SharedString,
     /// The card's captured frame and its device size, when one has arrived.
     preview: Option<(Arc<RenderImage>, (u32, u32))>,
+    /// The window's real size in logical px (0,0 when unknown).
+    size: (f32, f32),
 }
 
-/// The ghost's width in logical px; its height follows the capture's aspect.
+/// The ghost's width in logical px over the grid; its height follows the
+/// window's aspect.
 const GHOST_WIDTH: f32 = 264.;
+/// Within this many px of the rail the ghost starts shrinking (ORB-012).
+const GHOST_APPROACH: f32 = 96.;
+/// How long the ghost takes to settle at a new size.
+const GHOST_TWEEN_MS: f32 = 120.;
+/// The ghost never shrinks below this width.
+const GHOST_MIN_WIDTH: f32 = 28.;
+
+/// How far the ghost has shrunk toward its in-tile size: 0 away from the
+/// rail, 1 inside it, by the pointer's distance to the rail's edge.
+fn ghost_progress(pointer: (f32, f32), rail: Rect, approach: f32) -> f32 {
+    let (x, y) = pointer;
+    let dx = (rail.x - x).max(x - (rail.x + rail.w)).max(0.);
+    let dy = (rail.y - y).max(y - (rail.y + rail.h)).max(0.);
+    let distance = (dx * dx + dy * dy).sqrt();
+    (1. - distance / approach.max(1.)).clamp(0., 1.)
+}
+
+/// The ghost's size at `progress`: the full frame at 0, and at 1 the size
+/// the window would have inside a rail tile (its real geometry at the
+/// tile's composite scale, the tile's width over the output's).
+fn ghost_size(progress: f32, aspect: f32, window: (f32, f32), viewport_w: f32) -> (f32, f32) {
+    let aspect = if aspect > 0. { aspect } else { 16. / 10. };
+    let scale = THUMB_WIDTH / viewport_w.max(1.);
+    let small_w = if window.0 > 0. {
+        (window.0 * scale).clamp(GHOST_MIN_WIDTH, THUMB_WIDTH)
+    } else {
+        THUMB_WIDTH * 0.5
+    };
+    let w = GHOST_WIDTH + (small_w - GHOST_WIDTH) * progress.clamp(0., 1.);
+    let h = (w / aspect).max(GHOST_MIN_WIDTH / aspect);
+    (w.round(), h.round())
+}
 
 /// Follows the pointer during a drag: the window itself (its capture at
 /// its real aspect, scaled down, lifted by a shadow), or, while no frame
@@ -385,17 +420,63 @@ struct Ghost {
     preview: Option<(Arc<RenderImage>, (u32, u32))>,
     offset: Point<Pixels>,
     theme: Theme,
+    /// The window's real size, for its size inside a tile.
+    size: (f32, f32),
+    /// The last frame's layout: the rail's place and the output's width.
+    layout: Rc<RefCell<Layout>>,
+    reduced_motion: bool,
+    /// Where the shrink is now (0 full, 1 in-tile), eased toward the target.
+    displayed: f32,
+    last_frame: Instant,
 }
 
 impl Render for Ghost {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let t = self.theme;
-        let (w, h) = match &self.preview {
-            Some((_, (dw, dh))) if *dw > 0 && *dh > 0 => {
-                (GHOST_WIDTH, (GHOST_WIDTH * *dh as f32 / *dw as f32).round())
-            }
-            _ => (180., 56.),
+        let aspect = match &self.preview {
+            Some((_, (dw, dh))) if *dw > 0 && *dh > 0 => *dw as f32 / *dh as f32,
+            _ if self.size.0 > 0. && self.size.1 > 0. => self.size.0 / self.size.1,
+            _ => 16. / 10.,
         };
+        // The pointer against the rail: shrink as it arrives, grow as it leaves.
+        let pointer = window.mouse_position();
+        let (rail, viewport_w) = {
+            let layout = self.layout.borrow();
+            match layout.metrics {
+                Some(m) => (Some(m.rail), m.viewport.0),
+                None => (None, 1920.),
+            }
+        };
+        let target = rail
+            .map(|rail| {
+                ghost_progress(
+                    (f32::from(pointer.x), f32::from(pointer.y)),
+                    rail,
+                    GHOST_APPROACH,
+                )
+            })
+            .unwrap_or(0.);
+        let now = Instant::now();
+        let dt_ms = now.duration_since(self.last_frame).as_secs_f32() * 1000.;
+        self.last_frame = now;
+        if self.reduced_motion {
+            self.displayed = target;
+        } else {
+            let step = (dt_ms / GHOST_TWEEN_MS).clamp(0., 1.);
+            self.displayed += (target - self.displayed) * step;
+            if (target - self.displayed).abs() < 0.005 {
+                self.displayed = target;
+            }
+        }
+        if (target - self.displayed).abs() > 0.001 {
+            window.request_animation_frame();
+        }
+        let (w, h) = if self.preview.is_some() || self.size.0 > 0. {
+            ghost_size(self.displayed, aspect, self.size, viewport_w)
+        } else {
+            (180., 56.)
+        };
+        self.layout.borrow_mut().ghost = Some((w, h, self.displayed));
         let body = match self.preview.clone() {
             Some((image, _)) => div()
                 .w(px(w))
@@ -449,6 +530,10 @@ struct Layout {
     metrics: Option<Metrics>,
     backdrop: bool,
     hints: bool,
+    /// The drag ghost as last drawn: width, height, shrink progress
+    /// (0 over the grid, 1 in-tile size). Kept after the drop for the
+    /// scripted checks; cleared when the next drag starts.
+    ghost: Option<(f32, f32, f32)>,
 }
 
 pub struct OverviewView {
@@ -845,6 +930,7 @@ impl OverviewView {
             "rail": rect(m.rail),
             "rail_fit": m.rail_fit,
             "tile": [THUMB_WIDTH, THUMB_HEIGHT],
+            "ghost": layout.ghost.map(|(w, h, p)| json!({"width": w, "height": h, "progress": p})),
             "tile_gap": THUMB_GAP,
             "grid": rect(m.grid),
             "content_height": m.content_height(),
@@ -1221,7 +1307,9 @@ impl OverviewView {
             window: id,
             app: card.app.clone().into(),
             preview: preview.clone(),
+            size: (card.size.0.max(0) as f32, card.size.1.max(0) as f32),
         };
+        let ghost_layout = self.layout.clone();
         let preview_label: SharedString = if preview.is_some() {
             format!("Preview of {}", card.app).into()
         } else {
@@ -1384,11 +1472,19 @@ impl OverviewView {
                 this.perform(Some(Intent::Activate(id)), window, cx);
             }))
             .on_drag(dragged, move |dragged: &DraggedWindow, offset, _, cx| {
+                let reduced_motion = Look::get(cx).reduced_motion;
+                ghost_layout.borrow_mut().ghost = None;
+                let layout = ghost_layout.clone();
                 cx.new(|_| Ghost {
                     app: dragged.app.clone(),
                     preview: dragged.preview.clone(),
                     offset,
                     theme: t,
+                    size: dragged.size,
+                    layout,
+                    reduced_motion,
+                    displayed: 0.,
+                    last_frame: Instant::now(),
                 })
             })
             .child(
@@ -2522,6 +2618,39 @@ impl Render for OverviewView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_ghost_shrinks_to_its_in_tile_size_as_the_pointer_reaches_the_rail() {
+        let rail = Rect {
+            x: 200.,
+            y: 120.,
+            w: 1000.,
+            h: 140.,
+        };
+        // Far above the rail: no shrink. On its edge: full. Half way in the approach: half.
+        assert_eq!(ghost_progress((600., 0.), rail, 96.), 0.);
+        assert_eq!(ghost_progress((600., 130.), rail, 96.), 1.);
+        assert!((ghost_progress((600., 120. - 48.), rail, 96.) - 0.5).abs() < 1e-3);
+        // Beside the rail counts by distance too.
+        assert!(ghost_progress((200. - 96., 150.), rail, 96.) <= 0.001);
+        assert!(ghost_progress((200. - 10., 150.), rail, 96.) > 0.8);
+
+        // A 1920x1200 window on a 2304-wide output: in a 176-wide tile it is
+        // 1920 * 176 / 2304 = 146.7 px wide; the ghost goes from 264 to that.
+        let (w0, h0) = ghost_size(0., 1.6, (1920., 1200.), 2304.);
+        assert_eq!((w0, h0), (264., 165.));
+        let (w1, h1) = ghost_size(1., 1.6, (1920., 1200.), 2304.);
+        assert_eq!((w1, h1), (147., 92.));
+        assert!(
+            w1 <= THUMB_WIDTH && h1 <= THUMB_HEIGHT,
+            "fits inside a tile"
+        );
+        let (wm, _) = ghost_size(0.5, 1.6, (1920., 1200.), 2304.);
+        assert!(wm > w1 && wm < w0);
+        // A tiny window never vanishes.
+        let (ws, _) = ghost_size(1., 1.0, (40., 40.), 2304.);
+        assert_eq!(ws, GHOST_MIN_WIDTH);
+    }
 
     #[test]
     fn metrics_follow_the_hero_proportions() {
