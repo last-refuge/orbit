@@ -4,7 +4,15 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0-alpha.3] - Unreleased
+## [0.1.0-alpha.4] - Unreleased
+
+### Changed
+- Dragging a card to the workspace rail: the ghost shrinks smoothly to the
+  size the window will have inside the tile as the pointer reaches the
+  rail, stays centred under the pointer, and grows back when it leaves
+  (reduced motion snaps). The tile no longer disappears under it.
+
+## [0.1.0-alpha.3] - 2026-10-19
 
 The first build with an aarch64 tarball, and the first the updater
 requires to be signed.
@@ -96,6 +104,7 @@ is ready for other people to try.
   window placement rather than content until enabled.
 - No vector logo source yet; the brand files are rasters.
 
+[0.1.0-alpha.4]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.1
