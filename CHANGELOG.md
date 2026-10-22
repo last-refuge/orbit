@@ -4,7 +4,19 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0-alpha.4] - Unreleased
+## [0.1.0-alpha.5] - Unreleased
+
+### Fixed
+- Settings window: the − and + buttons of number rows (corner dwell, blur,
+  tint, preview refresh, update interval) also triggered the row's own
+  click, which steps up; − did nothing and + stepped twice. The corner
+  dwell can be stepped down again.
+- The install marker (`~/.local/share/orbit/install.json`) is written only
+  for the install being changed; the test suite can no longer rewrite the
+  machine's own marker. `orbit update check` notes a marker that disagrees
+  with the binary.
+
+## [0.1.0-alpha.4] - 2026-10-21
 
 ### Changed
 - Dragging a card to the workspace rail: the ghost shrinks smoothly to the
@@ -104,6 +116,7 @@ is ready for other people to try.
   window placement rather than content until enabled.
 - No vector logo source yet; the brand files are rasters.
 
+[0.1.0-alpha.5]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/last-refuge/orbit/releases/tag/v0.1.0-alpha.2
