@@ -538,7 +538,7 @@ impl SettingsView {
             }
             Key::Dwell => {
                 s.hot_corner.dwell_ms =
-                    (i64::from(s.hot_corner.dwell_ms) + 50 * delta).clamp(50, 2000) as u32
+                    step(i64::from(s.hot_corner.dwell_ms), delta, 50, 50, 2000) as u32
             }
             Key::CornerCloses => s.hot_corner.corner_closes = !s.hot_corner.corner_closes,
             Key::CornerMonitors => {
@@ -555,11 +555,11 @@ impl SettingsView {
                 s.appearance.theme = ThemeChoice::ALL[cycle(i, ThemeChoice::ALL.len())];
             }
             Key::Blur => {
-                s.appearance.blur = (i64::from(s.appearance.blur) + delta).clamp(1, 20) as u32
+                s.appearance.blur = step(i64::from(s.appearance.blur), delta, 1, 1, 20) as u32
             }
             Key::Tint => {
                 s.appearance.tint_percent =
-                    (i64::from(s.appearance.tint_percent) + 5 * delta).clamp(80, 120) as u32
+                    step(i64::from(s.appearance.tint_percent), delta, 5, 80, 120) as u32
             }
             Key::ReducedMotion => s.appearance.reduced_motion = !s.appearance.reduced_motion,
             Key::Columns => {
@@ -593,7 +593,7 @@ impl SettingsView {
             }
             Key::Refresh => {
                 s.previews.refresh_ms =
-                    (i64::from(s.previews.refresh_ms) + 100 * delta).clamp(100, 5000) as u32
+                    step(i64::from(s.previews.refresh_ms), delta, 100, 100, 5000) as u32
             }
             Key::CaptureInactive => {
                 s.previews.capture_inactive_workspaces = !s.previews.capture_inactive_workspaces
@@ -621,7 +621,7 @@ impl SettingsView {
             }
             Key::UpdateInterval => {
                 s.update.check_interval_hours =
-                    (i64::from(s.update.check_interval_hours) + delta).clamp(1, 168) as u32
+                    step(i64::from(s.update.check_interval_hours), delta, 1, 1, 168) as u32
             }
             Key::UpdateNotify => s.update.notify = !s.update.notify,
             Key::Shortcut
@@ -1171,8 +1171,11 @@ impl SettingsView {
                 .items_center()
                 .gap(px(8.))
                 .child(
-                    small_button(t, "−")
-                        .on_click(cx.listener(move |this, _, _, cx| this.adjust(key, -1, cx))),
+                    small_button(t, "−").on_click(cx.listener(move |this, _, _, cx| {
+                        // Not the row's click too: activating a number row steps it up.
+                        cx.stop_propagation();
+                        this.adjust(key, -1, cx)
+                    })),
                 )
                 .child(
                     div()
@@ -1184,8 +1187,10 @@ impl SettingsView {
                         .child(value_text.clone()),
                 )
                 .child(
-                    small_button(t, "+")
-                        .on_click(cx.listener(move |this, _, _, cx| this.adjust(key, 1, cx))),
+                    small_button(t, "+").on_click(cx.listener(move |this, _, _, cx| {
+                        cx.stop_propagation();
+                        this.adjust(key, 1, cx)
+                    })),
                 )
                 .into_any_element(),
             Control::Shortcut(label) => div()
@@ -1374,9 +1379,25 @@ fn update_help(u: &UpdateStatus, s: &Settings) -> String {
     }
 }
 
+/// One step of a number row: `delta` steps of `by`, kept within the range.
+fn step(value: i64, delta: i64, by: i64, min: i64, max: i64) -> i64 {
+    (value + by * delta).clamp(min, max)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn number_rows_step_both_ways_within_their_bounds() {
+        // The corner dwell: 50 ms steps between 50 and 2000.
+        assert_eq!(step(150, -1, 50, 50, 2000), 100);
+        assert_eq!(step(150, 1, 50, 50, 2000), 200);
+        assert_eq!(step(50, -1, 50, 50, 2000), 50, "stays at the floor");
+        assert_eq!(step(2000, 1, 50, 50, 2000), 2000, "stays at the ceiling");
+        assert_eq!(step(7, -1, 1, 1, 20), 6);
+        assert_eq!(step(100, -1, 5, 80, 120), 95);
+    }
 
     #[test]
     fn key_names_map_to_xkb() {
