@@ -8,7 +8,10 @@ here=$(cd "$(dirname "$0")/.." && pwd)
 orbit=$(realpath "${1:-$here/target/release/orbit}")
 out=$(realpath -m "${2:-$(mktemp -d /tmp/orbit-reorder.XXXXXX)}")
 mkdir -p "$out"
-export XDG_RUNTIME_DIR=$out/runtime XDG_CONFIG_HOME=$out/config XDG_STATE_HOME=$out/state XDG_DATA_HOME=$out/data XDG_CACHE_HOME=$out/cache
+# AF_UNIX paths are limited to 108 bytes on Linux. CI evidence directories
+# can be deeply nested, so keep the fixture's sockets in a short private path.
+fixture_runtime=$(mktemp -d /tmp/orbit-ws.XXXXXX)
+export XDG_RUNTIME_DIR=$fixture_runtime XDG_CONFIG_HOME=$out/config XDG_STATE_HOME=$out/state XDG_DATA_HOME=$out/data XDG_CACHE_HOME=$out/cache
 mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME" "$XDG_STATE_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
 chmod 700 "$XDG_RUNTIME_DIR"
 export HYPRLAND_INSTANCE_SIGNATURE=orbit-reorder-fixture
@@ -31,6 +34,10 @@ cleanup() {
     [[ -z $daemon_pid ]] || kill "$daemon_pid" 2>/dev/null || true
     [[ -z $fake_pid ]] || kill "$fake_pid" 2>/dev/null || true
     kill "$sway_pid" 2>/dev/null || true
+    [[ -z $daemon_pid ]] || wait "$daemon_pid" 2>/dev/null || true
+    [[ -z $fake_pid ]] || wait "$fake_pid" 2>/dev/null || true
+    wait "$sway_pid" 2>/dev/null || true
+    rm -rf "$fixture_runtime"
 }
 trap cleanup EXIT
 for _ in $(seq 50); do
