@@ -49,6 +49,16 @@ proves rendering on Wayland, not Hyprland behavior.
 
 ## Overlay lifecycle (ORB-003)
 
+Workspace reordering has an isolated native regression check:
+
+    bash scripts/workspace-reorder-check.sh target/release/orbit
+
+It starts headless sway and fake Hyprland in a private runtime and config
+directory. It checks real GPUI drag input, keyboard parity, cancellation,
+edge scrolling, persistence across restart, failed saves, and the existing
+window drag path. Needs sway, jq and Python; optional grim screenshots contain
+only the fixture desktop. `SWAY_BIN` can point to a locally unpacked sway.
+
     target/release/orbit daemon &          # resident process, hidden at rest
     target/release/orbit toggle            # on the focused monitor
     target/release/orbit show --output DP-1

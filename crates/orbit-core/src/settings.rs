@@ -333,6 +333,8 @@ impl RailPosition {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Layout {
+    /// Durable workspace keys in Orbit's custom rail order; empty uses the default.
+    pub workspace_order: Vec<String>,
     pub columns: Columns,
     pub titles: Titles,
     pub special_workspaces: bool,
@@ -342,6 +344,7 @@ pub struct Layout {
 impl Default for Layout {
     fn default() -> Self {
         Self {
+            workspace_order: Vec::new(),
             columns: Columns::Auto,
             titles: Titles::Selected,
             special_workspaces: true,

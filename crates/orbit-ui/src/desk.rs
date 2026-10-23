@@ -91,6 +91,11 @@ pub struct Place {
 /// Requests for the platform side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outbound {
+    SaveWorkspaceOrder {
+        order: Vec<String>,
+        workspace: orbit_core::WorkspaceId,
+        origin: (u64, Epoch),
+    },
     /// Query and report with [`Desk::refreshed`].
     Query(orbit_core::Kinds),
     /// Move silently, then report with [`Desk::move_dispatched`].
@@ -189,6 +194,7 @@ pub struct Desk {
     capture_inactive: bool,
     hide_special: bool,
     search_this_workspace: bool,
+    workspace_order: Vec<String>,
     out: Box<dyn Fn(Outbound)>,
     clock: Instant,
     log: VecDeque<(OpId, String)>,
@@ -221,6 +227,7 @@ impl Desk {
             capture_inactive: false,
             hide_special: false,
             search_this_workspace: false,
+            workspace_order: Vec::new(),
             out: Box::new(out),
             clock: Instant::now(),
             log: VecDeque::new(),
@@ -317,6 +324,44 @@ impl Desk {
 
     pub fn request_settings(&self) {
         (self.out)(Outbound::OpenSettings);
+    }
+
+    pub fn set_workspace_order(&mut self, order: Vec<String>) {
+        self.workspace_order = order.clone();
+        if let Some(overview) = &mut self.overview {
+            overview.workspace_order = order;
+        }
+    }
+
+    pub fn workspace_order_saved(
+        &mut self,
+        order: Vec<String>,
+        workspace: orbit_core::WorkspaceId,
+        origin: (u64, Epoch),
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        let (text, tone) = match result {
+            Ok(()) => {
+                self.set_workspace_order(order);
+                if let Some(o) = &mut self.overview
+                    && origin == (self.session, self.store.epoch())
+                    && self.store.model().workspaces.contains_key(&workspace)
+                {
+                    o.rail_focus = Some(Dest::Existing(workspace));
+                    o.region = orbit_core::Region::Rail;
+                }
+                ("Workspace order saved".into(), orbit_core::Tone::Info)
+            }
+            Err(error) => (
+                format!("Could not save workspace order: {error}"),
+                orbit_core::Tone::Error,
+            ),
+        };
+        if let Some(o) = &mut self.overview {
+            o.announcement = Some(orbit_core::Announcement { text, tone });
+        }
+        self.changed(cx);
     }
 
     pub fn set_close_on_activate(&mut self, close: bool) {
@@ -547,6 +592,7 @@ impl Desk {
         let mut overview = Overview::open(self.store.model(), monitor);
         overview.hide_special = self.hide_special;
         overview.search_this_workspace = self.search_this_workspace;
+        overview.workspace_order = self.workspace_order.clone();
         self.overview = Some(overview);
         self.dismiss = false;
         // The frosted backdrop: one output capture per open. Restricted
@@ -608,6 +654,16 @@ impl Desk {
     /// overview should close now.
     pub fn perform(&mut self, intent: Intent, cx: &mut Context<Self>) -> bool {
         let dismiss = match intent {
+            Intent::ReorderWorkspaces { order, workspace } => {
+                if self.store.sync() == Sync::Live {
+                    (self.out)(Outbound::SaveWorkspaceOrder {
+                        order,
+                        workspace,
+                        origin: (self.session, self.store.epoch()),
+                    });
+                }
+                false
+            }
             Intent::Dismiss => true,
             Intent::Activate(window) => {
                 if self.store.model().window(window).is_some() {

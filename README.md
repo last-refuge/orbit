@@ -70,6 +70,8 @@ orbit config set startup.launch_at_login true
 | Start typing | searches windows, apps and workspaces; <kbd>Enter</kbd> goes to the first match |
 | Click a card | brings that window forward: its workspace, focus, and on top of the floating stack |
 | Drag a card onto a workspace tile | moves the window there and keeps you where you are; hold <kbd>Shift</kbd> to follow it |
+| Drag a workspace tile left or right | reorders the rail and saves the order; hold near an edge to scroll, or press <kbd>Esc</kbd> to cancel |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> in the rail | moves the focused workspace one position left or right |
 | Arrows, <kbd>Tab</kbd>, <kbd>Enter</kbd> | move between windows, the rail and the search; <kbd>Shift</kbd>+<kbd>Enter</kbd> activates and follows |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | opens the move menu for the selected window; type to filter the destinations |
 | <kbd>Ctrl</kbd>+<kbd>/</kbd> or <kbd>F1</kbd> | shows the key hints |
@@ -108,6 +110,7 @@ orbit config set shortcut.key F12        # xkb key names; mods are SUPER, SHIFT,
 | `appearance.reduced_motion` | `false` | no travel animation; content still fades in |
 | `layout.columns` | `auto` | `auto`, `two`, `three`, `four` |
 | `layout.rail` | `top` | the workspace rail at the `top` or `bottom` |
+| `layout.workspace_order` | `[]` | saved rail order, set by dragging; clear with `orbit config set layout.workspace_order '[]'` to restore the default |
 | `layout.titles` | `selected` | window titles under the cards: `always`, `selected`, `never` |
 | `layout.special_workspaces` | `true` | special workspaces in the rail |
 | `behaviour.close_on_activate` | `true` | opening a window closes the overview |
@@ -163,6 +166,12 @@ Only an install made by the install line updates itself; a build from
 source is told to pull and rebuild instead.
 
 ## How it works
+
+Workspace reordering changes the order shown in Orbit and persists between
+sessions. Workspace numbers, names, monitor assignments, window contents and
+Hyprland shortcuts stay the same. New workspaces follow the saved ones; the
+New tile always stays last. Reordering is available with search and the window
+move menu closed.
 
 - **A layer-shell overlay.** The overview is one full-output surface on the
   overlay layer, drawn with [GPUI](https://www.gpui.rs) and opened only when

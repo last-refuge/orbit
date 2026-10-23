@@ -4,7 +4,15 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0-alpha.5] - Unreleased
+## [0.1.0-alpha.6] - 2026-10-23
+
+### Added
+- Drag workspace tiles to reorder Orbit's rail, with an insertion marker,
+  edge scrolling, Escape to cancel, and Ctrl+Shift+Left/Right as a keyboard
+  equivalent. The order is saved between sessions without renumbering
+  Hyprland workspaces or moving their windows.
+
+## [0.1.0-alpha.5] - 2026-10-22
 
 ### Fixed
 - Settings window: the − and + buttons of number rows (corner dwell, blur,

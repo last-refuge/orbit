@@ -494,7 +494,159 @@ fn every_pointer_action_has_a_keyboard_path() {
     keys.end(model);
     let last = keys.cards(model).last().unwrap().window;
     assert_eq!(keys.enter(model, false), Some(Intent::Activate(last)));
-    assert_eq!(KEYBOARD_PATHS.len(), 7);
+    // Drag a workspace ⇔ Ctrl+Shift+Right on the focused rail tile.
+    let mut keys = Overview::open(model, None);
+    keys.tab(true);
+    assert_eq!(
+        keys.reorder_focused(model, 1),
+        keys.reorder_workspace(model, WorkspaceId(1), two, true)
+    );
+    assert_eq!(KEYBOARD_PATHS.len(), 8);
+}
+
+fn commit_order(overview: &mut Overview, intent: Option<Intent>) {
+    let Some(Intent::ReorderWorkspaces { order, .. }) = intent else {
+        panic!("expected reorder")
+    };
+    overview.workspace_order = order;
+}
+
+fn rail_labels(overview: &Overview, model: &Model) -> Vec<String> {
+    overview.tiles(model).into_iter().map(|t| t.label).collect()
+}
+
+#[test]
+fn reorder_inserts_at_start_middle_and_end_without_changing_workspace_contents() {
+    let (store, _) = store();
+    let model = store.model();
+    let mut overview = Overview::open(model, None);
+    let selected = overview.selected;
+    let intent =
+        overview.reorder_workspace(model, WorkspaceId(5), Dest::Existing(WorkspaceId(1)), false);
+    // A proposal (including a cancelled drag) has no effect until saved.
+    assert_eq!(
+        rail_labels(&overview, model),
+        ["1", "2", "5", "web", "scratch", "New"]
+    );
+    commit_order(&mut overview, intent);
+    assert_eq!(
+        rail_labels(&overview, model),
+        ["5", "1", "2", "web", "scratch", "New"]
+    );
+    let intent = overview.reorder_workspace(
+        model,
+        WorkspaceId(1),
+        Dest::Existing(WorkspaceId(-1337)),
+        true,
+    );
+    commit_order(&mut overview, intent);
+    assert_eq!(
+        rail_labels(&overview, model),
+        ["5", "2", "web", "1", "scratch", "New"]
+    );
+    let intent = overview.reorder_workspace(model, WorkspaceId(5), Dest::NewNumbered(6), false);
+    commit_order(&mut overview, intent);
+    assert_eq!(
+        rail_labels(&overview, model),
+        ["2", "web", "1", "scratch", "5", "New"]
+    );
+    assert_eq!(overview.previewed, Some(WorkspaceId(1)));
+    assert_eq!(overview.selected, selected);
+    assert_eq!(model.windows_on(WorkspaceId(1)).count(), 2);
+    assert_eq!(model.active_window, selected);
+}
+
+#[test]
+fn saved_order_survives_reopen_missing_workspaces_and_reallocated_named_ids() {
+    let (store, _) = store();
+    let mut model = store.model().clone();
+    let mut overview = Overview::open(&model, None);
+    overview.workspace_order = vec![
+        "name:web".into(),
+        "number:2".into(),
+        "number:2".into(),
+        "number:8".into(),
+        "special:special:scratch".into(),
+    ];
+    model.workspaces.remove(&WorkspaceId(-1337));
+    model
+        .workspaces
+        .insert(WorkspaceId(-1338), ws(-1338, "web"));
+    model.workspaces.insert(WorkspaceId(3), ws(3, "3"));
+    overview.hide_special = true;
+    assert_eq!(
+        rail_labels(&overview, &model),
+        ["web", "2", "1", "3", "5", "New"]
+    );
+    let intent = overview.reorder_workspace(
+        &model,
+        WorkspaceId(5),
+        Dest::Existing(WorkspaceId(-1338)),
+        false,
+    );
+    commit_order(&mut overview, intent);
+    assert!(overview.workspace_order.contains(&"number:8".into()));
+    assert!(
+        overview
+            .workspace_order
+            .contains(&"special:special:scratch".into())
+    );
+    let mut settings = Settings::default();
+    settings.layout.workspace_order = overview.workspace_order;
+    let decoded = Settings::parse(&settings.to_toml()).unwrap();
+    model.workspaces.insert(WorkspaceId(8), ws(8, "8"));
+    let mut reopened = Overview::open(&model, None);
+    reopened.workspace_order = decoded.layout.workspace_order;
+    assert_eq!(
+        rail_labels(&reopened, &model),
+        ["5", "web", "2", "8", "scratch", "1", "3", "New"]
+    );
+}
+
+#[test]
+fn reorder_rejects_invalid_filtered_and_no_op_drops_and_keyboard_edges() {
+    let (store, _) = store();
+    let model = store.model();
+    let mut overview = Overview::open(model, None);
+    let one = Dest::Existing(WorkspaceId(1));
+    let two = Dest::Existing(WorkspaceId(2));
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(1), one, true),
+        None
+    );
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(1), two, false),
+        None
+    );
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(99), one, true),
+        None
+    );
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(1), Dest::Existing(WorkspaceId(99)), true),
+        None
+    );
+    assert_eq!(overview.reorder_focused(model, 1), None); // grid
+    overview.tab(true);
+    assert_eq!(overview.reorder_focused(model, -1), None);
+    overview.rail_focus = Some(Dest::Existing(WorkspaceId(-98)));
+    assert_eq!(overview.reorder_focused(model, 1), None); // New is fixed at end
+    overview.hide_special = true;
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(-98), one, false),
+        None
+    );
+    overview.type_text(model, "web");
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(1), two, true),
+        None
+    );
+    overview.escape(model);
+    overview.begin_move(model);
+    assert_eq!(
+        overview.reorder_workspace(model, WorkspaceId(1), two, true),
+        None
+    );
 }
 
 #[test]

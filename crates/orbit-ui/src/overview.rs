@@ -29,11 +29,12 @@ use std::{
 };
 
 use gpui::{
-    App, Bounds, BoxShadow, Context, ElementInputHandler, Entity, EntityInputHandler, FocusHandle,
-    FontWeight, Hsla, KeyBinding, Keystroke, Modifiers, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels, PlatformInput, Point, RenderImage, Rgba, Role,
-    SharedString, Size, Subscription, UTF16Selection, Window, accesskit, actions, canvas, div,
-    ease_out_quint, img, linear_color_stop, linear_gradient, point, prelude::*, px,
+    App, Bounds, BoxShadow, Context, DragMoveEvent, ElementInputHandler, Entity,
+    EntityInputHandler, FocusHandle, FontWeight, Hsla, KeyBinding, Keystroke, Modifiers,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels, PlatformInput,
+    Point, RenderImage, Rgba, Role, SharedString, Size, Subscription, UTF16Selection, Window,
+    accesskit, actions, canvas, div, ease_out_quint, img, linear_color_stop, linear_gradient,
+    point, prelude::*, px,
 };
 use orbit_core::{Card, Dest, Intent, Model, Region, Tile, Tone};
 
@@ -48,6 +49,8 @@ actions!(
         Dismiss,
         Next,
         Previous,
+        ReorderLeft,
+        ReorderRight,
         Up,
         Down,
         First,
@@ -126,6 +129,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("escape", Dismiss, Some(CONTEXT)),
         KeyBinding::new("right", Next, Some(CONTEXT)),
         KeyBinding::new("left", Previous, Some(CONTEXT)),
+        KeyBinding::new("ctrl-shift-left", ReorderLeft, Some(CONTEXT)),
+        KeyBinding::new("ctrl-shift-right", ReorderRight, Some(CONTEXT)),
         KeyBinding::new("up", Up, Some(CONTEXT)),
         KeyBinding::new("down", Down, Some(CONTEXT)),
         KeyBinding::new("home", First, Some(CONTEXT)),
@@ -516,6 +521,71 @@ impl Render for Ghost {
 /// and the window's real aspect (w / h) if known.
 type DrawnPreview = (Bounds<Pixels>, (u32, u32), Option<f32>);
 
+#[derive(Clone)]
+struct DraggedWorkspace {
+    id: orbit_core::WorkspaceId,
+    epoch: orbit_core::Epoch,
+    label: String,
+    composite: Composite,
+}
+
+struct WorkspaceGhost {
+    dragged: DraggedWorkspace,
+    offset: Point<Pixels>,
+}
+
+impl Render for WorkspaceGhost {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = Look::get(cx).theme;
+        let composite = &self.dragged.composite;
+        div()
+            .pl(self.offset.x - px(THUMB_WIDTH / 2.))
+            .pt(self.offset.y - px(THUMB_HEIGHT / 2.))
+            .child(
+                div()
+                    .w(px(THUMB_WIDTH))
+                    .rounded(px(10.))
+                    .bg(t.canvas.rgba())
+                    .border_2()
+                    .border_color(t.selection.rgba())
+                    .shadow(vec![soft_shadow(0.55)])
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .relative()
+                            .w_full()
+                            .h(px(THUMB_HEIGHT))
+                            .when_some(composite.backdrop.clone(), |d, image| {
+                                d.child(img(image).size_full().object_fit(ObjectFit::Cover))
+                            })
+                            .children(composite.windows.iter().map(|w| {
+                                let sx = THUMB_WIDTH / composite.monitor.0.max(1.);
+                                let sy = THUMB_HEIGHT / composite.monitor.1.max(1.);
+                                div()
+                                    .absolute()
+                                    .left(px(w.rect.x * sx))
+                                    .top(px(w.rect.y * sy))
+                                    .w(px((w.rect.w * sx).max(2.)))
+                                    .h(px((w.rect.h * sy).max(2.)))
+                                    .bg(t.surface.rgba())
+                                    .border_1()
+                                    .border_color(t.muted.alpha(0.5))
+                                    .when_some(w.image.clone(), |d, image| {
+                                        d.child(img(image).size_full().object_fit(ObjectFit::Fill))
+                                    })
+                            })),
+                    )
+                    .child(
+                        div()
+                            .p(px(8.))
+                            .text_size(px(14.))
+                            .text_color(t.strong.rgba())
+                            .child(self.dragged.label.clone()),
+                    ),
+            )
+    }
+}
+
 /// Where things were laid out in the last frame, for test hooks that drive
 /// the real input path, for keyboard rows, and for placing the input
 /// method's candidate window.
@@ -552,6 +622,10 @@ pub struct OverviewView {
     /// its own entry.
     corner_entry: u64,
     corner_inside: bool,
+    workspace_drag: Option<DraggedWorkspace>,
+    workspace_drop: Option<(Dest, bool)>,
+    rail_drag_first: Option<usize>,
+    workspace_drag_generation: u64,
     _observe: Subscription,
 }
 
@@ -591,6 +665,10 @@ impl OverviewView {
             mark_hovered: false,
             corner_entry: 0,
             corner_inside: false,
+            workspace_drag: None,
+            workspace_drop: None,
+            rail_drag_first: None,
+            workspace_drag_generation: 0,
             _observe: observe,
         }
     }
@@ -664,6 +742,7 @@ impl OverviewView {
     fn dismiss(&mut self, _: &Dismiss, window: &mut Window, cx: &mut Context<Self>) {
         // Escape cancels a drag first; the window stays where it was.
         if cx.stop_active_drag(window) {
+            self.clear_workspace_drag(cx);
             return;
         }
         if self.show_hints {
@@ -677,6 +756,123 @@ impl OverviewView {
 
     fn next(&mut self, _: &Next, _: &mut Window, cx: &mut Context<Self>) {
         self.with_overview(cx, |o, m| o.horizontal(m, 1));
+    }
+
+    fn reorder_left(&mut self, _: &ReorderLeft, window: &mut Window, cx: &mut Context<Self>) {
+        let intent = self.with_overview(cx, |o, m| o.reorder_focused(m, -1));
+        self.perform(intent, window, cx);
+    }
+
+    fn reorder_right(&mut self, _: &ReorderRight, window: &mut Window, cx: &mut Context<Self>) {
+        let intent = self.with_overview(cx, |o, m| o.reorder_focused(m, 1));
+        self.perform(intent, window, cx);
+    }
+
+    fn clear_workspace_drag(&mut self, cx: &mut Context<Self>) {
+        self.workspace_drag_generation += 1;
+        self.workspace_drag = None;
+        self.workspace_drop = None;
+        self.rail_drag_first = None;
+        cx.notify();
+    }
+
+    fn workspace_target(
+        &self,
+        dragged: &DraggedWorkspace,
+        position: Point<Pixels>,
+        cx: &App,
+    ) -> Option<(Dest, bool)> {
+        let desk = self.desk.read(cx);
+        if !matches!(desk.status, Link::Live { .. }) || desk.store().epoch() != dragged.epoch {
+            return None;
+        }
+        let layout = self.layout.borrow();
+        let m = layout.metrics?;
+        let x = f32::from(position.x);
+        let y = f32::from(position.y);
+        if x < m.rail.x || x > m.rail.x + m.rail.w || y < m.rail.y || y > m.rail.y + m.rail.h {
+            return None;
+        }
+        let (dest, bounds) = layout.tiles.iter().min_by(|(_, a), (_, b)| {
+            (f32::from(a.center().x) - x)
+                .abs()
+                .total_cmp(&(f32::from(b.center().x) - x).abs())
+        })?;
+        let after = matches!(dest, Dest::Existing(_)) && position.x > bounds.center().x;
+        desk.overview()?
+            .reorder_workspace(desk.store().model(), dragged.id, *dest, after)?;
+        Some((*dest, after))
+    }
+
+    fn start_workspace_drag(
+        &mut self,
+        dragged: DraggedWorkspace,
+        first: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.workspace_drag_generation += 1;
+        let generation = self.workspace_drag_generation;
+        self.workspace_drag = Some(dragged);
+        self.rail_drag_first = Some(first);
+        self.workspace_drop = None;
+        // A timer also clears a drag released outside the rail. Holding at an
+        // edge scrolls through workspaces that don't fit on the output.
+        cx.spawn_in(window, async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(350))
+                    .await;
+                let keep = this.update_in(cx, |this, window, cx| {
+                    if this.workspace_drag_generation != generation {
+                        return false;
+                    }
+                    if !cx.has_active_drag() || this.workspace_drag.is_none() {
+                        this.clear_workspace_drag(cx);
+                        return false;
+                    }
+                    let position = window.mouse_position();
+                    let metrics = this.layout.borrow().metrics;
+                    if let Some(m) = metrics {
+                        let desk = this.desk.read(cx);
+                        let count = desk
+                            .overview()
+                            .map_or(0, |o| o.tiles(desk.store().model()).len());
+                        let x = f32::from(position.x);
+                        let y = f32::from(position.y);
+                        let first = this.rail_drag_first.unwrap_or(0);
+                        let next = if y >= m.rail.y && y <= m.rail.y + m.rail.h {
+                            if x >= m.rail.x && x < m.rail.x + 36. {
+                                first.saturating_sub(1)
+                            } else if x > m.rail.x + m.rail.w - 36. && x <= m.rail.x + m.rail.w {
+                                (first + 1).min(count.saturating_sub(m.rail_fit))
+                            } else {
+                                first
+                            }
+                        } else {
+                            first
+                        };
+                        if next != first {
+                            this.rail_drag_first = Some(next);
+                            this.workspace_drop = None;
+                            cx.notify();
+                        } else if let Some(dragged) = &this.workspace_drag {
+                            let target = this.workspace_target(dragged, position, cx);
+                            if target != this.workspace_drop {
+                                this.workspace_drop = target;
+                                cx.notify();
+                            }
+                        }
+                    }
+                    true
+                });
+                if !matches!(keep, Ok(true)) {
+                    break;
+                }
+            }
+        })
+        .detach();
+        cx.notify();
     }
 
     fn previous(&mut self, _: &Previous, _: &mut Window, cx: &mut Context<Self>) {
@@ -875,12 +1071,39 @@ impl OverviewView {
                 drag(window, cx, from, to, shift);
                 Ok("ok".into())
             }
+            (Some(command @ ("drag-workspace" | "start-workspace-drag")), Some(source), Some(target), side) => {
+                let from = view.read(cx).tile_center(source, cx)?;
+                let offset = match side {
+                    None | Some("before") => -THUMB_WIDTH / 3.,
+                    Some("after") => THUMB_WIDTH / 3.,
+                    Some(other) => return Err(format!("unexpected {other}")),
+                };
+                let to = if matches!(target, "outside" | "left-edge" | "right-edge") {
+                    let m = view.read(cx).layout.borrow().metrics.ok_or("not laid out")?;
+                    match target {
+                        "outside" => point(px(m.grid.x + 10.), px(m.grid.y + 10.)),
+                        "left-edge" => point(px(m.rail.x + 4.), px(m.rail.y + 30.)),
+                        _ => point(px(m.rail.x + m.rail.w - 4.), px(m.rail.y + 30.)),
+                    }
+                } else {
+                    let mut to = view.read(cx).tile_center(target, cx)?;
+                    to.x += px(offset);
+                    to
+                };
+                start_drag(window, cx, from, to, Modifiers::default());
+                if command == "drag-workspace" { release_drag(window, cx, to, Modifiers::default()); }
+                Ok("ok".into())
+            }
+            (Some("drop-workspace"), None, None, None) => {
+                release_drag(window, cx, window.mouse_position(), Modifiers::default());
+                Ok("ok".into())
+            }
             (Some("a11y"), None, None, None) => Ok(a11y_summary(window).to_string()),
             (Some("layout"), None, None, None) => Ok(view.read(cx).layout_summary().to_string()),
             _ => Err(
                 "usage: key K[,K…] | type TEXT | compose TEXT | commit TEXT | click 0xADDR \
                       | click-workspace NAME | click-search | drag 0xADDR NAME [follow] | a11y \
-                      | layout"
+                      | drag-workspace SOURCE TARGET [before|after] | start-workspace-drag SOURCE TARGET [before|after] | drop-workspace | layout"
                     .into(),
             ),
         }
@@ -936,6 +1159,9 @@ impl OverviewView {
             "content_height": m.content_height(),
             "cards": layout.cards.len(),
             "tiles": layout.tiles.len(),
+            "workspace_dragging": self.workspace_drag.is_some(),
+            "workspace_drop": self.workspace_drop.map(|(dest, after)| serde_json::json!({ "destination": format!("{dest:?}"), "after": after })),
+            "rail_drag_first": self.rail_drag_first,
             "previews": layout.previews.iter().map(|(address, (b, size, aspect))| json!({
                 "address": format!("{address:#x}"),
                 "image": [size.0, size.1],
@@ -1089,9 +1315,25 @@ impl OverviewView {
         of: usize,
         moving: bool,
         keyboard: bool,
+        first: usize,
+        reorder: bool,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let dest = tile.dest;
+        let dragged = match dest {
+            Dest::Existing(id) if reorder => Some(DraggedWorkspace {
+                id,
+                epoch: self.desk.read(cx).store().epoch(),
+                label: tile.label.clone(),
+                composite: composite.clone(),
+            }),
+            _ => None,
+        };
+        let weak = cx.weak_entity();
+        let insertion = self
+            .workspace_drop
+            .filter(|(target, _)| *target == dest)
+            .map(|(_, after)| after);
         let layout = self.layout.clone();
         let chosen = moving && tile.focused;
         let marked = chosen || (tile.previewed && !moving);
@@ -1199,6 +1441,23 @@ impl OverviewView {
             .flex_col()
             .items_center()
             .cursor_pointer()
+            .when(
+                self.workspace_drag
+                    .as_ref()
+                    .is_some_and(|d| Dest::Existing(d.id) == dest),
+                |d| d.opacity(0.45),
+            )
+            .when_some(dragged, |d, dragged| {
+                d.on_drag(dragged, move |dragged, offset, window, cx| {
+                    let _ = weak.update(cx, |this, cx| {
+                        this.start_workspace_drag(dragged.clone(), first, window, cx)
+                    });
+                    cx.new(|_| WorkspaceGhost {
+                        dragged: dragged.clone(),
+                        offset,
+                    })
+                })
+            })
             .child(div().w(px(THUMB_WIDTH)).h(px(THUMB_HEIGHT)).child(ring_box(
                 t,
                 m,
@@ -1246,6 +1505,16 @@ impl OverviewView {
             .drag_over::<DraggedWindow>(move |style, _, _, _| {
                 style.bg(t.selection.alpha(0.25)).rounded(px(14.))
             })
+            .children(insertion.map(|after| {
+                div()
+                    .absolute()
+                    .top_0()
+                    .left(px(if after { THUMB_WIDTH - 3. } else { 0. }))
+                    .w(px(3.))
+                    .h(px(THUMB_HEIGHT))
+                    .rounded_full()
+                    .bg(t.focus.rgba())
+            }))
             .on_drop(
                 cx.listener(move |this, dragged: &DraggedWindow, window, cx| {
                     let follow = window.modifiers().shift != Look::get(cx).prefs.follow_on_move;
@@ -1678,12 +1947,14 @@ fn a11y_summary(window: &Window) -> serde_json::Value {
 
 /// What a rail tile composites: the backdrop and the workspace's windows
 /// in monitor-relative logical coordinates, with cached previews.
+#[derive(Clone)]
 struct Composite {
     backdrop: Option<Arc<RenderImage>>,
     monitor: (f32, f32),
     windows: Vec<SmallWindow>,
 }
 
+#[derive(Clone)]
 struct SmallWindow {
     rect: Rect,
     image: Option<Arc<RenderImage>>,
@@ -1904,6 +2175,17 @@ fn drag(window: &mut Window, cx: &mut App, from: Point<Pixels>, to: Point<Pixels
         shift,
         ..Modifiers::default()
     };
+    start_drag(window, cx, from, to, modifiers);
+    release_drag(window, cx, to, modifiers);
+}
+
+fn start_drag(
+    window: &mut Window,
+    cx: &mut App,
+    from: Point<Pixels>,
+    to: Point<Pixels>,
+    modifiers: Modifiers,
+) {
     move_to(window, cx, from, None, Modifiers::default());
     window.dispatch_event(
         PlatformInput::MouseDown(MouseDownEvent {
@@ -1920,6 +2202,9 @@ fn drag(window: &mut Window, cx: &mut App, from: Point<Pixels>, to: Point<Pixels
         let at = point(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
         move_to(window, cx, at, Some(MouseButton::Left), modifiers);
     }
+}
+
+fn release_drag(window: &mut Window, cx: &mut App, to: Point<Pixels>, modifiers: Modifiers) {
     window.dispatch_event(
         PlatformInput::MouseUp(MouseUpEvent {
             button: MouseButton::Left,
@@ -2065,6 +2350,7 @@ impl Render for OverviewView {
                 ],
                 Region::Rail => vec![
                     ("←→", "preview"),
+                    ("Ctrl Shift ←→", "reorder"),
                     ("Enter", "switch"),
                     ("Tab", "windows"),
                     ("Esc", "close"),
@@ -2184,7 +2470,12 @@ impl Render for OverviewView {
                 }
             })
             .unwrap_or(0);
-        let first = m.rail_first(shown_index);
+        let first = self
+            .rail_drag_first
+            .unwrap_or_else(|| m.rail_first(shown_index))
+            .min(rail_count.saturating_sub(m.rail_fit));
+        let reorder =
+            moving_app.is_none() && !searching && matches!(desk.status, Link::Live { .. });
         let composites: Vec<Composite> = tiles
             .iter()
             .map(|tile| {
@@ -2235,6 +2526,23 @@ impl Render for OverviewView {
             .w(px(m.rail.w))
             .h(px(m.rail.h))
             .overflow_hidden()
+            .on_drag_move(
+                cx.listener(|this, event: &DragMoveEvent<DraggedWorkspace>, _, cx| {
+                    let target = this.workspace_target(event.drag(cx), event.event.position, cx);
+                    if target != this.workspace_drop {
+                        this.workspace_drop = target;
+                        cx.notify();
+                    }
+                }),
+            )
+            .on_drop(cx.listener(|this, dragged: &DraggedWorkspace, window, cx| {
+                let target = this.workspace_target(dragged, window.mouse_position(), cx);
+                let intent = target.and_then(|(dest, after)| {
+                    this.with_overview(cx, |o, m| o.reorder_workspace(m, dragged.id, dest, after))
+                });
+                this.clear_workspace_drag(cx);
+                this.perform(intent, window, cx);
+            }))
             .children(
                 tiles
                     .into_iter()
@@ -2258,6 +2566,8 @@ impl Render for OverviewView {
                             rail_count,
                             moving_app.is_some(),
                             keyboard_rail,
+                            first,
+                            reorder,
                             cx,
                         )
                         .into_any_element()
@@ -2557,6 +2867,8 @@ impl Render for OverviewView {
             .on_action(cx.listener(Self::dismiss))
             .on_action(cx.listener(Self::next))
             .on_action(cx.listener(Self::previous))
+            .on_action(cx.listener(Self::reorder_left))
+            .on_action(cx.listener(Self::reorder_right))
             .on_action(cx.listener(Self::up))
             .on_action(cx.listener(Self::down))
             .on_action(cx.listener(Self::first))

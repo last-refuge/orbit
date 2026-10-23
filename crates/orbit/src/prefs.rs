@@ -113,8 +113,58 @@ impl Prefs {
             "revision": self.revision,
         })
     }
+
+    /// Save only the rail order against the latest valid file. Returns whether
+    /// unrelated settings changed and also need applying to the daemon.
+    pub fn save_workspace_order(&mut self, order: Vec<String>) -> Result<bool, String> {
+        let path = self.path.as_ref().ok_or("no config directory")?;
+        let mut settings = Settings::load(path)?;
+        settings.layout.workspace_order = order.clone();
+        let mut previous = self.settings.clone();
+        previous.layout.workspace_order = order;
+        let other_changes = settings != previous;
+        self.save(settings)?;
+        self.revision += 1;
+        Ok(other_changes)
+    }
 }
 
 fn mtime(path: &std::path::Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workspace_order_preserves_external_edits_and_invalid_files() {
+        let dir = std::env::temp_dir().join(format!("orbit-order-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        let mut settings = Settings::default();
+        settings.save(&path).unwrap();
+        let mut prefs = Prefs::new(settings.clone(), Some(path.clone()));
+        settings.layout.special_workspaces = false;
+        settings.save(&path).unwrap();
+        assert!(
+            prefs
+                .save_workspace_order(vec!["number:2".into(), "number:1".into()])
+                .unwrap()
+        );
+        let saved = Settings::load(&path).unwrap();
+        assert!(!saved.layout.special_workspaces);
+        assert_eq!(saved.layout.workspace_order, ["number:2", "number:1"]);
+        assert!(
+            !prefs
+                .save_workspace_order(vec!["number:1".into(), "number:2".into()])
+                .unwrap()
+        );
+        let previous = prefs.settings.clone();
+        std::fs::write(&path, "[layout\ninvalid").unwrap();
+        assert!(prefs.save_workspace_order(vec!["number:5".into()]).is_err());
+        assert_eq!(prefs.settings, previous);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "[layout\ninvalid");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }
