@@ -91,9 +91,11 @@ pub struct Place {
 /// Requests for the platform side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outbound {
-    SaveWorkspaceOrder {
-        order: Vec<String>,
-        workspace: orbit_core::WorkspaceId,
+    SwapWorkspaces {
+        source: orbit_core::WorkspaceId,
+        target: orbit_core::WorkspaceId,
+        source_windows: Vec<u64>,
+        target_windows: Vec<u64>,
         origin: (u64, Epoch),
     },
     /// Query and report with [`Desk::refreshed`].
@@ -194,7 +196,7 @@ pub struct Desk {
     capture_inactive: bool,
     hide_special: bool,
     search_this_workspace: bool,
-    workspace_order: Vec<String>,
+    swapping: Option<(u64, Epoch)>,
     out: Box<dyn Fn(Outbound)>,
     clock: Instant,
     log: VecDeque<(OpId, String)>,
@@ -227,7 +229,7 @@ impl Desk {
             capture_inactive: false,
             hide_special: false,
             search_this_workspace: false,
-            workspace_order: Vec::new(),
+            swapping: None,
             out: Box::new(out),
             clock: Instant::now(),
             log: VecDeque::new(),
@@ -326,40 +328,31 @@ impl Desk {
         (self.out)(Outbound::OpenSettings);
     }
 
-    pub fn set_workspace_order(&mut self, order: Vec<String>) {
-        self.workspace_order = order.clone();
-        if let Some(overview) = &mut self.overview {
-            overview.workspace_order = order;
-        }
-    }
-
-    pub fn workspace_order_saved(
+    pub fn workspace_swapped(
         &mut self,
-        order: Vec<String>,
-        workspace: orbit_core::WorkspaceId,
         origin: (u64, Epoch),
         result: Result<(), String>,
         cx: &mut Context<Self>,
     ) {
-        let (text, tone) = match result {
-            Ok(()) => {
-                self.set_workspace_order(order);
-                if let Some(o) = &mut self.overview
-                    && origin == (self.session, self.store.epoch())
-                    && self.store.model().workspaces.contains_key(&workspace)
-                {
-                    o.rail_focus = Some(Dest::Existing(workspace));
-                    o.region = orbit_core::Region::Rail;
-                }
-                ("Workspace order saved".into(), orbit_core::Tone::Info)
-            }
-            Err(error) => (
-                format!("Could not save workspace order: {error}"),
-                orbit_core::Tone::Error,
-            ),
-        };
+        if self.swapping != Some(origin) {
+            return;
+        }
+        self.swapping = None;
         if let Some(o) = &mut self.overview {
-            o.announcement = Some(orbit_core::Announcement { text, tone });
+            o.swapping = false;
+            if origin == (self.session, self.store.epoch()) {
+                let (text, tone) = match result {
+                    Ok(()) => (
+                        "Workspaces swapped; window layouts preserved".into(),
+                        orbit_core::Tone::Info,
+                    ),
+                    Err(error) => (
+                        format!("Could not swap workspaces: {error}"),
+                        orbit_core::Tone::Error,
+                    ),
+                };
+                o.announcement = Some(orbit_core::Announcement { text, tone });
+            }
         }
         self.changed(cx);
     }
@@ -433,6 +426,13 @@ impl Desk {
 
     pub fn disconnected(&mut self, link: u64, error: String, cx: &mut Context<Self>) {
         if self.link == Some(link) {
+            if let Some(origin) = self.swapping {
+                self.workspace_swapped(
+                    origin,
+                    Err("Connection lost; refresh to check the result before retrying".into()),
+                    cx,
+                );
+            }
             self.store.disconnect();
             self.status = Link::Lost { error };
             self.changed(cx);
@@ -454,6 +454,11 @@ impl Desk {
             goal.seen_at = None;
             self.stamp(|a| &mut a.layer_gone_ms);
             self.pursue_focus();
+        }
+        if let Event::WorkspaceIdChanged { old, new } = &event
+            && let Some(o) = &mut self.overview
+        {
+            o.workspace_id_changed(*old, *new);
         }
         if let Ok(effects) = self.store.on_event(epoch, event) {
             self.run(effects, cx);
@@ -592,7 +597,7 @@ impl Desk {
         let mut overview = Overview::open(self.store.model(), monitor);
         overview.hide_special = self.hide_special;
         overview.search_this_workspace = self.search_this_workspace;
-        overview.workspace_order = self.workspace_order.clone();
+        overview.swapping = self.swapping.is_some();
         self.overview = Some(overview);
         self.dismiss = false;
         // The frosted backdrop: one output capture per open. Restricted
@@ -653,13 +658,45 @@ impl Desk {
     /// Carries out an intent from the overview. Returns true when the
     /// overview should close now.
     pub fn perform(&mut self, intent: Intent, cx: &mut Context<Self>) -> bool {
+        // Keep an in-flight swap isolated from other UI mutations.
+        if self.swapping.is_some() && !matches!(intent, Intent::Dismiss) {
+            return false;
+        }
         let dismiss = match intent {
-            Intent::ReorderWorkspaces { order, workspace } => {
-                if self.store.sync() == Sync::Live {
-                    (self.out)(Outbound::SaveWorkspaceOrder {
-                        order,
-                        workspace,
-                        origin: (self.session, self.store.epoch()),
+            Intent::SwapWorkspaces { source, target } => {
+                if self.store.sync() == Sync::Live
+                    && self.swapping.is_none()
+                    && !self.store.has_pending_moves()
+                    && self.overview.as_ref().is_some_and(|o| {
+                        o.reorder_workspace(
+                            self.store.model(),
+                            source,
+                            Dest::Existing(target),
+                            false,
+                        )
+                        .is_some()
+                    })
+                {
+                    let origin = (self.session, self.store.epoch());
+                    self.swapping = Some(origin);
+                    if let Some(o) = &mut self.overview {
+                        o.swapping = true;
+                        o.rail_focus = Some(Dest::Existing(source));
+                        o.region = orbit_core::Region::Rail;
+                    }
+                    let addresses = |id| {
+                        self.store
+                            .model()
+                            .windows_on(id)
+                            .map(|w| w.id.address)
+                            .collect()
+                    };
+                    (self.out)(Outbound::SwapWorkspaces {
+                        source,
+                        target,
+                        source_windows: addresses(source),
+                        target_windows: addresses(target),
+                        origin,
                     });
                 }
                 false

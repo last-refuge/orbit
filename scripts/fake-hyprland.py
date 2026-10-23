@@ -155,6 +155,29 @@ class World:
             return list(self.dispatches)
         return None
 
+    def swap(self, lua):
+        self.dispatches.append(lua.strip())
+        match = re.search(r"local source, target = (\d+), (\d+)", lua)
+        if not match:
+            return "error: unsupported eval", []
+        a, b = match.groups()
+        if a not in self.workspaces() or b not in self.workspaces():
+            return "error: workspace disappeared", []
+        for label, workspace in [("a", a), ("b", b)]:
+            group = re.search(r"check\(" + label + r", \{(.*?)\}\)", lua).group(1)
+            expected = {int(address, 16) for address in re.findall(r"address:(0x[0-9a-f]+)", group)}
+            actual = {address for address, w in self.windows.items() if w["workspace"] == workspace}
+            if actual != expected:
+                return "error: Workspace contents changed; try again", []
+        events = []
+        for old, new in [(a, "4294967294"), (b, a), ("4294967294", b)]:
+            for w in self.windows.values():
+                if w["workspace"] == old: w["workspace"] = new
+            if self.active_ws == old: self.active_ws = new
+            if old in self.last_on: self.last_on[new] = self.last_on.pop(old)
+            events.append(f"changeworkspaceid>>{old},{new}")
+        return "ok", events
+
     def dispatch(self, lua):
         events = []
         self.dispatches.append(lua.strip())
@@ -235,7 +258,10 @@ def handle_request(world, conn):
             if message.startswith(prefix):
                 message = message[len(prefix):]
         with lock:
-            if message.startswith("dispatch "):
+            if message.startswith("eval "):
+                reply, events = world.swap(message[len("eval "):])
+                broadcast(events)
+            elif message.startswith("dispatch "):
                 reply, events = world.dispatch(message[len("dispatch "):])
                 # Hyprland writes a dispatch's events before its reply.
                 broadcast(events)

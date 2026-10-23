@@ -42,6 +42,10 @@ pub enum Event {
         id: WorkspaceId,
         name: String,
     },
+    WorkspaceIdChanged {
+        old: WorkspaceId,
+        new: WorkspaceId,
+    },
     WorkspaceMoved {
         id: WorkspaceId,
         monitor: String,
@@ -86,6 +90,7 @@ impl Event {
             WorkspaceCreated { .. } | WorkspaceDestroyed { .. } | WorkspaceRenamed { .. } => {
                 Kinds::WORKSPACES
             }
+            WorkspaceIdChanged { .. } => Kinds::ALL,
             WorkspaceMoved { .. } => Kinds::WORKSPACES | Kinds::MONITORS,
             ActiveWorkspace { .. } | FocusedMonitor { .. } | ActiveSpecial { .. } => {
                 Kinds::MONITORS

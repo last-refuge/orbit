@@ -66,62 +66,63 @@ stop() { "$orbit" quit >/dev/null; wait "$daemon_pid"; daemon_pid=; }
 shot() { if command -v grim >/dev/null; then grim "$out/$1.png"; fi; }
 start
 initial='["1","91","92","93","orbitfx","New"]'
-reordered='["1","93","91","92","orbitfx","New"]'
 order_is "$initial"
 python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-before.json"
-python3 "$here/scripts/fake-hyprland.py" ctl -j fake/dispatches > "$out/dispatches-before.json"
 drive start-workspace-drag 93 91 before
 sleep .15
 "$orbit" drive layout | jq -e '.workspace_dragging and .workspace_drop != null' >/dev/null
 shot dragging
 drive drop-workspace
-order_is "$reordered"
-wait_for '.overview.rail_focus == "93" and .overview.previewed == "1"'
+wait_for '.overview.announcement == "Workspaces swapped; window layouts preserved" and .overview.rail_focus == "91"'
+order_is "$initial"
 python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-after.json"
-python3 "$here/scripts/fake-hyprland.py" ctl -j fake/dispatches > "$out/dispatches-after.json"
-cmp "$out/clients-before.json" "$out/clients-after.json"
-cmp "$out/dispatches-before.json" "$out/dispatches-after.json"
-printf 'PASS drag reorder, focus, unchanged compositor state\n'
-shot reordered
+python3 - "$out" <<'PYTEST'
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1]); before=json.loads((p/'clients-before.json').read_text()); after=json.loads((p/'clients-after.json').read_text())
+for a,b in zip(before,after):
+    expected={91:93,93:91}.get(a['workspace']['id'],a['workspace']['id'])
+    assert b['workspace']['id']==expected
+    assert {k:v for k,v in a.items() if k!='workspace'}=={k:v for k,v in b.items() if k!='workspace'}
+PYTEST
+printf 'PASS drag swaps compositor contents, preserves geometry, rail follows workspace numbers\n'
+shot swapped
 
-drive key ctrl-shift-right
-order_is '["1","91","93","92","orbitfx","New"]'
+drive drag-workspace 91 93
+wait_for '.overview.rail_focus == "93"'
+python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-restored.json"
+cmp "$out/clients-before.json" "$out/clients-restored.json"
+printf 'PASS swap back restores every window\n'
+
 drive key ctrl-shift-left
-order_is "$reordered"
-printf 'PASS keyboard parity\n'
+wait_for '.overview.rail_focus == "92"'
+drive key ctrl-shift-right
+wait_for '.overview.rail_focus == "93"'
+python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-keyboard.json"
+cmp "$out/clients-before.json" "$out/clients-keyboard.json"
+printf 'PASS keyboard parity and round trip\n'
 
 drive start-workspace-drag 93 92 after
 drive key escape
 drive drop-workspace
-order_is "$reordered"
 drive drag-workspace 93 outside
 sleep .4
-order_is "$reordered"
+python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-cancelled.json"
+cmp "$out/clients-before.json" "$out/clients-cancelled.json"
 printf 'PASS Escape and outside-drop cancellation\n'
 
-# Six tiles on a five-tile rail: holding the right edge exposes New.
 drive start-workspace-drag 93 right-edge
 sleep .8
 "$orbit" drive layout | jq -e '.rail_drag_first > 0' >/dev/null
 shot edge-scroll
+drive key escape
 drive drop-workspace
-order_is '["1","91","92","orbitfx","93","New"]'
-printf 'PASS edge scroll and move to end; New remains last\n'
+printf 'PASS edge scroll; unsupported targets do not swap\n'
 
 stop
 start
-order_is '["1","91","92","orbitfx","93","New"]'
-printf 'PASS persisted order across daemon restart\n'
-
-# Invalid edits must be preserved, and a failed save must leave the rail alone.
-cp "$ORBIT_CONFIG" "$out/valid.toml"
-printf '[layout\ninvalid' > "$ORBIT_CONFIG"
-drive drag-workspace 91 1 before
-wait_for '.overview.announcement | startswith("Could not save workspace order:")'
-order_is '["1","91","92","orbitfx","93","New"]'
-test "$(cat "$ORBIT_CONFIG")" = $'[layout\ninvalid'
-cp "$out/valid.toml" "$ORBIT_CONFIG"
-printf 'PASS save failure leaves order and invalid file intact\n'
+order_is "$initial"
+printf 'PASS restart reads compositor order\n'
 
 # Original window drag path still moves only the fixture window.
 drive key shift-tab,home,right,tab

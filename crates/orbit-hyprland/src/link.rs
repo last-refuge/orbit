@@ -219,7 +219,7 @@ impl Worker {
                         Err(error) => return End::Lost(error),
                     },
                     ToLink::Dispatch { ticket, control } => {
-                        let result = match instance.dispatch(&control, syntax) {
+                        let mut result = match instance.dispatch(&control, syntax) {
                             Ok(result) => result,
                             Err(error) => {
                                 (self.sink)(FromLink::Dispatched {
@@ -233,6 +233,23 @@ impl Worker {
                         // The contract: events already readable come first.
                         if let Err(error) = self.read_events(&mut stream, &mut pending) {
                             return End::Lost(error);
+                        }
+                        // Reconcile the real compositor before acknowledging a workspace swap,
+                        // including refusals/rollback. Never retry a lost mutation.
+                        if matches!(control, Control::SwapWorkspaces { .. }) {
+                            match snapshot::query_refresh(instance, Kinds::ALL) {
+                                Ok(refresh) => {
+                                    if result.is_ok() {
+                                        result = control.verify_swap(&refresh);
+                                    }
+                                    if let Err(error) = self.read_events(&mut stream, &mut pending)
+                                    {
+                                        return End::Lost(error);
+                                    }
+                                    (self.sink)(FromLink::Refresh { link, refresh });
+                                }
+                                Err(error) => return End::Lost(error),
+                            }
                         }
                         (self.sink)(FromLink::Dispatched {
                             link,

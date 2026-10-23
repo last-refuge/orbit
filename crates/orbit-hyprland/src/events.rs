@@ -128,6 +128,13 @@ pub fn parse(line: &str) -> Result<Option<Event>, ParseError> {
                 name: f[1].to_owned(),
             }
         }
+        "changeworkspaceid" => {
+            let (old, new) = data.split_once(',').ok_or(err("workspace ids"))?;
+            Event::WorkspaceIdChanged {
+                old: workspace(old)?,
+                new: workspace(new)?,
+            }
+        }
         "moveworkspacev2" => {
             let (rest, monitor) = with_monitor()?;
             let (id, _) = rest.split_once(',').ok_or(err("too few fields"))?;
@@ -282,6 +289,20 @@ mod tests {
 
     fn ok(line: &str) -> Event {
         parse(line).unwrap().unwrap()
+    }
+
+    #[test]
+    fn workspace_id_change_is_not_a_cosmetic_rename() {
+        let event = parse("changeworkspaceid>>91,4294967294").unwrap().unwrap();
+        assert_eq!(
+            event,
+            Event::WorkspaceIdChanged {
+                old: WorkspaceId(91),
+                new: WorkspaceId(4294967294)
+            }
+        );
+        assert_eq!(event.touches(), orbit_core::Kinds::ALL);
+        assert!(parse("changeworkspaceid>>91,nope").is_err());
     }
 
     #[test]

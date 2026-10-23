@@ -86,6 +86,13 @@ pub fn safe_name(name: &str) -> Result<&str, String> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Control {
+    /// Swap complete numbered workspace objects, never reconstruct window layouts.
+    SwapWorkspaces {
+        source: i64,
+        target: i64,
+        source_windows: Vec<u64>,
+        target_windows: Vec<u64>,
+    },
     /// Move a window without following it or changing focus.
     MoveSilent { address: u64, dest: Dest },
     /// Focus a window, switching to its workspace.
@@ -99,10 +106,72 @@ pub enum Control {
 }
 
 impl Control {
+    pub fn verify_swap(&self, refresh: &orbit_core::Refresh) -> Result<(), String> {
+        let Self::SwapWorkspaces {
+            source,
+            target,
+            source_windows,
+            target_windows,
+        } = self
+        else {
+            return Ok(());
+        };
+        let windows = refresh
+            .windows
+            .as_ref()
+            .ok_or("Missing workspace verification snapshot")?;
+        for (addresses, destination) in [(source_windows, target), (target_windows, source)] {
+            if addresses.iter().any(|address| {
+                !windows
+                    .iter()
+                    .any(|w| w.address == *address && w.workspace.0 == *destination)
+            }) {
+                return Err(
+                    "Workspace contents changed before verification; refresh to check the result"
+                        .into(),
+                );
+            }
+        }
+        Ok(())
+    }
+
     /// The text after `dispatch ` on the request socket.
     pub fn encode(&self, syntax: Syntax) -> Result<String, String> {
+        if let Self::SwapWorkspaces {
+            source,
+            target,
+            source_windows,
+            target_windows,
+        } = self
+        {
+            if syntax != Syntax::Lua
+                || *source <= 0
+                || *target <= 0
+                || source == target
+                || *source >= u32::MAX as i64
+                || *target >= u32::MAX as i64
+            {
+                return Err(
+                    "Workspace swapping requires two numbered workspaces and Hyprland 0.56+".into(),
+                );
+            }
+            let addresses = |windows: &[u64]| {
+                windows
+                    .iter()
+                    .map(|a| format!("'address:{a:#x}'"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            };
+            let chunk = include_str!("swap.lua")
+                .replace("@SOURCE@", &source.to_string())
+                .replace("@TARGET@", &target.to_string())
+                .replace("@SOURCE_WINDOWS@", &addresses(source_windows))
+                .replace("@TARGET_WINDOWS@", &addresses(target_windows));
+            return Ok(chunk);
+        }
         let mut out = String::new();
         match (self, syntax) {
+            (Self::SwapWorkspaces { .. }, _) => unreachable!(),
             (Control::MoveSilent { address, dest }, Syntax::Lua) => write!(
                 out,
                 "hl.dsp.window.move({{ window = 'address:{address:#x}', workspace = '{}', follow = false }})",
@@ -162,6 +231,49 @@ pub fn check_reply(reply: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workspace_swaps_require_supported_ids_and_verified_contents() {
+        let swap = Control::SwapWorkspaces {
+            source: 1,
+            target: 2,
+            source_windows: vec![0xa],
+            target_windows: vec![0xb],
+        };
+        let lua = swap.encode(Syntax::Lua).unwrap();
+        assert!(lua.contains("local source, target = 1, 2"));
+        assert!(lua.contains("check(a, {'address:0xa'})"));
+        assert!(!lua.contains('@'));
+        assert!(swap.encode(Syntax::Legacy).is_err());
+        for (source, target) in [(0, 1), (-98, 1), (1, 1), (1, u32::MAX as i64)] {
+            assert!(
+                Control::SwapWorkspaces {
+                    source,
+                    target,
+                    source_windows: vec![],
+                    target_windows: vec![]
+                }
+                .encode(Syntax::Lua)
+                .is_err()
+            );
+        }
+        let clients: Vec<crate::snapshot::Client> = serde_json::from_value(serde_json::json!([
+            { "address":"0xa", "mapped":true, "workspace":{"id":2,"name":"2"} },
+            { "address":"0xb", "mapped":true, "workspace":{"id":1,"name":"1"} }
+        ]))
+        .unwrap();
+        let mut refresh = orbit_core::Refresh::full(
+            vec![],
+            vec![],
+            crate::snapshot::core_windows(&clients),
+            None,
+        );
+        assert!(swap.verify_swap(&refresh).is_ok());
+        refresh.windows.as_mut().unwrap()[0].workspace = orbit_core::WorkspaceId(1);
+        assert!(swap.verify_swap(&refresh).is_err());
+        refresh.windows = None;
+        assert!(swap.verify_swap(&refresh).is_err());
+    }
 
     #[test]
     fn picks_syntax_by_version() {

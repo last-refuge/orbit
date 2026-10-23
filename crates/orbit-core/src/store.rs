@@ -239,6 +239,10 @@ impl Store {
         self.ops.get(&op).map(|op| &op.state)
     }
 
+    pub fn has_pending_moves(&self) -> bool {
+        !self.lanes.is_empty()
+    }
+
     /// Kinds asked for and not answered yet.
     pub fn inflight(&self) -> Kinds {
         self.inflight
@@ -619,6 +623,29 @@ impl Store {
                 if let Some(workspace) = model.workspaces.get_mut(&id) {
                     workspace.name = name;
                 }
+            }
+            Event::WorkspaceIdChanged { old, new } => {
+                if let Some(mut workspace) = model.workspaces.remove(&old) {
+                    workspace.id = new;
+                    if workspace.name == old.0.to_string() {
+                        workspace.name = new.0.to_string();
+                    }
+                    model.workspaces.insert(new, workspace);
+                }
+                for window in model.windows.values_mut() {
+                    if window.workspace == old {
+                        window.workspace = new;
+                    }
+                }
+                for monitor in &mut model.monitors {
+                    if monitor.active_workspace == old {
+                        monitor.active_workspace = new;
+                    }
+                    if monitor.special_workspace == Some(old) {
+                        monitor.special_workspace = Some(new);
+                    }
+                }
+                self.request(Kinds::ALL, effects);
             }
             Event::WorkspaceMoved { id, monitor } => {
                 if let Some(workspace) = model.workspaces.get_mut(&id) {

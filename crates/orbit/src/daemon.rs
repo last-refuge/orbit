@@ -78,12 +78,6 @@ const REPLY_TIMEOUT: Duration = Duration::from_secs(3);
 /// had focus when the request arrived (or the compositor's choice).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Request {
-    /// Internal UI request; persistence never runs inside rendering.
-    WorkspaceOrder {
-        order: Vec<String>,
-        workspace: orbit_core::WorkspaceId,
-        origin: (u64, orbit_core::Epoch),
-    },
     Show {
         output: Option<String>,
     },
@@ -133,13 +127,6 @@ impl Request {
 
     pub fn encode(&self) -> String {
         match self {
-            Request::WorkspaceOrder {
-                order, workspace, ..
-            } => format!(
-                "workspace-order {} {}",
-                workspace.0,
-                serde_json::to_string(order).unwrap()
-            ),
             Request::Show { output } => join("show", output),
             Request::Toggle { output } => join("toggle", output),
             Request::Hide => "hide".into(),
@@ -186,11 +173,7 @@ impl Desired {
                     self.size = size;
                 }
             }
-            Request::Status
-            | Request::State
-            | Request::Drive(_)
-            | Request::Update(_)
-            | Request::WorkspaceOrder { .. } => {}
+            Request::Status | Request::State | Request::Drive(_) | Request::Update(_) => {}
             // The overview holds the keyboard; the settings window needs it.
             Request::Settings => self.visible = false,
             Request::Quit => {
@@ -257,6 +240,7 @@ pub struct Options {
 
 /// What a dispatch ticket was for, to route its result.
 enum Ticket {
+    SwapWorkspaces((u64, orbit_core::Epoch)),
     Move(OpId),
     Control,
 }
@@ -456,22 +440,21 @@ fn start_workers(
                     });
                 };
                 match out {
-                    Outbound::SaveWorkspaceOrder {
-                        order,
-                        workspace,
+                    Outbound::SwapWorkspaces {
+                        source,
+                        target,
+                        source_windows,
+                        target_windows,
                         origin,
-                    } => {
-                        let (reply, _) = mpsc::channel();
-                        let _ = requests.unbounded_send(Envelope {
-                            request: Request::WorkspaceOrder {
-                                order,
-                                workspace,
-                                origin,
-                            },
-                            size: None,
-                            reply,
-                        });
-                    }
+                    } => dispatch(
+                        Ticket::SwapWorkspaces(origin),
+                        Control::SwapWorkspaces {
+                            source: source.0,
+                            target: target.0,
+                            source_windows,
+                            target_windows,
+                        },
+                    ),
                     Outbound::Query(kinds) => link.send(ToLink::Query(kinds)),
                     Outbound::Move { op, address, to } => dispatch(
                         Ticket::Move(op),
@@ -527,6 +510,9 @@ fn start_workers(
                     // dispatch again (a confirmed "move and follow").
                     let ticket = tickets.borrow_mut().remove(&ticket);
                     match ticket {
+                        Some(Ticket::SwapWorkspaces(origin)) => {
+                            desk.workspace_swapped(origin, result, cx)
+                        }
                         Some(Ticket::Move(op)) => desk.move_dispatched(op, result, cx),
                         Some(Ticket::Control) => {
                             if let Err(error) = result {
@@ -1015,32 +1001,6 @@ async fn serve(
                     Request::State => overlay.state(cx),
                     Request::Drive(command) => overlay.drive(command, cx),
                     Request::Update(words) => crate::updates::command(words, cx),
-                    Request::WorkspaceOrder {
-                        order,
-                        workspace,
-                        origin,
-                    } => {
-                        // Read the latest file before editing just this field. An invalid
-                        // file is an error, never permission to replace the user's edits.
-                        let result = cx.global_mut::<Prefs>().save_workspace_order(order.clone());
-                        // Apply other settings too if the file changed before the poll.
-                        if matches!(result, Ok(true)) {
-                            apply_settings(&mut overlay, cx);
-                        }
-                        let reply = result
-                            .as_ref()
-                            .map_or_else(|e| format!("error: {e}"), |_| "ok".into());
-                        overlay.desk.update(cx, |desk, cx| {
-                            desk.workspace_order_saved(
-                                order.clone(),
-                                *workspace,
-                                *origin,
-                                result.map(|_| ()),
-                                cx,
-                            )
-                        });
-                        reply
-                    }
                     _ => reply.clone(),
                 };
                 let _ = envelope.reply.send(reply);
@@ -1120,7 +1080,6 @@ fn apply_settings(overlay: &mut Overlay, cx: &mut App) {
         settings.appearance.blur,
     );
     overlay.desk.update(cx, |desk, _| {
-        desk.set_workspace_order(settings.layout.workspace_order.clone());
         desk.set_never_capture(settings.previews.never_capture.clone());
         desk.set_capture_inactive(settings.previews.capture_inactive_workspaces);
         desk.set_close_on_activate(settings.behaviour.close_on_activate);

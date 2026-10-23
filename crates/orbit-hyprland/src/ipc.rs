@@ -122,7 +122,12 @@ impl Instance {
             Ok(text) => text,
             Err(refused) => return Ok(Err(refused)),
         };
-        let reply = request(&self.request_socket(), &format!("dispatch {text}"))
+        let command = if matches!(control, crate::control::Control::SwapWorkspaces { .. }) {
+            "eval"
+        } else {
+            "dispatch"
+        };
+        let reply = request(&self.request_socket(), &format!("{command} {text}"))
             .context("hyprctl dispatch failed")?;
         Ok(crate::control::check_reply(&reply))
     }

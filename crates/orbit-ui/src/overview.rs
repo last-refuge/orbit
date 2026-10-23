@@ -1321,7 +1321,7 @@ impl OverviewView {
     ) -> impl IntoElement {
         let dest = tile.dest;
         let dragged = match dest {
-            Dest::Existing(id) if reorder => Some(DraggedWorkspace {
+            Dest::Existing(id) if reorder && id.0 > 0 => Some(DraggedWorkspace {
                 id,
                 epoch: self.desk.read(cx).store().epoch(),
                 label: tile.label.clone(),
@@ -1330,7 +1330,7 @@ impl OverviewView {
             _ => None,
         };
         let weak = cx.weak_entity();
-        let insertion = self
+        let swap_target = self
             .workspace_drop
             .filter(|(target, _)| *target == dest)
             .map(|(_, after)| after);
@@ -1338,7 +1338,7 @@ impl OverviewView {
         let chosen = moving && tile.focused;
         let marked = chosen || (tile.previewed && !moving);
         let focused = tile.focused && keyboard;
-        let ring_color = if focused {
+        let ring_color = if focused || swap_target.is_some() {
             Some(t.focus)
         } else if marked {
             Some(t.selection)
@@ -1462,7 +1462,7 @@ impl OverviewView {
                 t,
                 m,
                 ring_color,
-                marked || focused,
+                marked || focused || swap_target.is_some(),
                 10.,
                 thumb,
             )))
@@ -1505,16 +1505,6 @@ impl OverviewView {
             .drag_over::<DraggedWindow>(move |style, _, _, _| {
                 style.bg(t.selection.alpha(0.25)).rounded(px(14.))
             })
-            .children(insertion.map(|after| {
-                div()
-                    .absolute()
-                    .top_0()
-                    .left(px(if after { THUMB_WIDTH - 3. } else { 0. }))
-                    .w(px(3.))
-                    .h(px(THUMB_HEIGHT))
-                    .rounded_full()
-                    .bg(t.focus.rgba())
-            }))
             .on_drop(
                 cx.listener(move |this, dragged: &DraggedWindow, window, cx| {
                     let follow = window.modifiers().shift != Look::get(cx).prefs.follow_on_move;
@@ -2350,7 +2340,7 @@ impl Render for OverviewView {
                 ],
                 Region::Rail => vec![
                     ("←→", "preview"),
-                    ("Ctrl Shift ←→", "reorder"),
+                    ("Ctrl Shift ←→", "swap workspaces"),
                     ("Enter", "switch"),
                     ("Tab", "windows"),
                     ("Esc", "close"),
@@ -2474,8 +2464,10 @@ impl Render for OverviewView {
             .rail_drag_first
             .unwrap_or_else(|| m.rail_first(shown_index))
             .min(rail_count.saturating_sub(m.rail_fit));
-        let reorder =
-            moving_app.is_none() && !searching && matches!(desk.status, Link::Live { .. });
+        let reorder = moving_app.is_none()
+            && !o.swapping
+            && !searching
+            && matches!(desk.status, Link::Live { .. });
         let composites: Vec<Composite> = tiles
             .iter()
             .map(|tile| {

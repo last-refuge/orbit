@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    model::{Model, OpId, Window, WindowId, Workspace, WorkspaceId, WorkspaceKind},
+    model::{Model, OpId, Window, WindowId, WorkspaceId, WorkspaceKind},
     search::{Field, Query, app_name},
     store::{Failure, Outcome, RequestError, Target},
 };
@@ -19,7 +19,7 @@ use crate::{
 /// and `orbit state` show it; tests and `scripts/review-check.sh` walk it.
 pub const KEYBOARD_PATHS: [(&str, &str); 8] = [
     (
-        "drag a workspace to reorder",
+        "drag a numbered workspace to swap",
         "Tab to the workspaces, Ctrl+Shift+Left/Right",
     ),
     ("click a window", "arrows to select it, Enter"),
@@ -202,10 +202,10 @@ impl Card {
 /// What the user asked for, for the platform side to carry out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Intent {
-    /// Persist the rail's display order; compositor workspace identities stay intact.
-    ReorderWorkspaces {
-        order: Vec<String>,
-        workspace: WorkspaceId,
+    /// Exchange complete numbered workspaces in the compositor.
+    SwapWorkspaces {
+        source: WorkspaceId,
+        target: WorkspaceId,
     },
     /// Focus this window (switching to its workspace) and dismiss.
     Activate(WindowId),
@@ -279,7 +279,7 @@ pub struct Overview {
     /// the previewed workspace.
     pub hide_special: bool,
     pub search_this_workspace: bool,
-    pub workspace_order: Vec<String>,
+    pub swapping: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -317,7 +317,7 @@ impl Overview {
             pending: BTreeMap::new(),
             hide_special: false,
             search_this_workspace: false,
-            workspace_order: Vec::new(),
+            swapping: false,
         };
         overview.selected = model
             .active_window
@@ -366,50 +366,45 @@ impl Overview {
         all
     }
 
-    /// Propose a reorder without changing anything until persistence succeeds.
-    /// Keep absent workspace keys so their position survives empty-workspace
-    /// destruction and a compositor restart. New workspaces append in default order.
+    /// Exchange complete numbered workspaces, preserving compositor layout objects.
     pub fn reorder_workspace(
         &self,
         model: &Model,
         source: WorkspaceId,
         target: Dest,
-        after: bool,
+        _after: bool,
     ) -> Option<Intent> {
-        if self.searching() || self.moving.is_some() || target == Dest::Existing(source) {
+        let Dest::Existing(target) = target else {
             return None;
-        }
-        let tiles = self.all_tiles(model);
-        if !tiles.iter().any(|t| t.dest == Dest::Existing(source))
-            || !tiles.iter().any(|t| t.dest == target)
+        };
+        if self.searching()
+            || self.moving.is_some()
+            || self.swapping
+            || !self.pending.is_empty()
+            || source == target
         {
             return None;
         }
-        let mut order = Vec::new();
-        for key in self.workspace_order.iter().cloned().chain(
-            rail_order(model, &self.workspace_order)
-                .iter()
-                .map(|id| workspace_key(&model.workspaces[id])),
-        ) {
-            if !order.contains(&key) {
-                order.push(key);
-            }
-        }
-        let before = order.clone();
-        let key = workspace_key(model.workspaces.get(&source)?);
-        order.retain(|k| k != &key);
-        let at = match target {
-            Dest::Existing(id) => {
-                let target_key = workspace_key(model.workspaces.get(&id)?);
-                order.iter().position(|k| k == &target_key)? + usize::from(after)
-            }
-            Dest::NewNumbered(_) => order.len(),
+        let numbered = |id| {
+            model
+                .workspaces
+                .get(&id)
+                .is_some_and(|w| w.kind() == WorkspaceKind::Numbered && id.0 < u32::MAX as i64)
         };
-        order.insert(at, key);
-        (order != before).then_some(Intent::ReorderWorkspaces {
-            order,
-            workspace: source,
-        })
+        (numbered(source) && numbered(target)).then_some(Intent::SwapWorkspaces { source, target })
+    }
+
+    /// Workspace identity stays intact when Hyprland changes its number.
+    pub fn workspace_id_changed(&mut self, old: WorkspaceId, new: WorkspaceId) {
+        if self.previewed == Some(old) {
+            self.previewed = Some(new);
+        }
+        if self.rail_focus == Some(Dest::Existing(old)) {
+            self.rail_focus = Some(Dest::Existing(new));
+        }
+        if self.invocation.workspace == Some(old) {
+            self.invocation.workspace = Some(new);
+        }
     }
 
     pub fn reorder_focused(&self, model: &Model, delta: isize) -> Option<Intent> {
@@ -438,7 +433,7 @@ impl Overview {
                 .iter()
                 .any(|m| m.active_workspace == id || m.special_workspace == Some(id))
         };
-        let mut tiles: Vec<Tile> = rail_order(model, &self.workspace_order)
+        let mut tiles: Vec<Tile> = rail_order(model)
             .into_iter()
             .filter_map(|id| model.workspaces.get(&id))
             .filter(|w| !(self.hide_special && w.kind() == WorkspaceKind::Special))
@@ -771,7 +766,7 @@ impl Overview {
         if query.is_empty() {
             return Hits::default();
         }
-        let order = rail_order(model, &self.workspace_order);
+        let order = rail_order(model);
         let rank = |id: WorkspaceId| order.iter().position(|w| *w == id).unwrap_or(usize::MAX);
         let mut windows: Vec<_> = model
             .windows
@@ -1033,7 +1028,7 @@ pub fn cover(model: &Model, workspace: WorkspaceId) -> Option<WindowId> {
 }
 
 /// Workspace ids in rail order: numbered, then named, then special.
-fn rail_order(model: &Model, preferred: &[String]) -> Vec<WorkspaceId> {
+fn rail_order(model: &Model) -> Vec<WorkspaceId> {
     let mut workspaces: Vec<_> = model.workspaces.values().collect();
     workspaces.sort_by_key(|w| {
         let rank = match w.kind() {
@@ -1043,23 +1038,7 @@ fn rail_order(model: &Model, preferred: &[String]) -> Vec<WorkspaceId> {
         };
         (rank, if rank == 0 { w.id.0 } else { 0 }, w.name.clone())
     });
-    // Stable sort keeps the default order for keys not saved yet.
-    workspaces.sort_by_key(|w| {
-        preferred
-            .iter()
-            .position(|key| *key == workspace_key(w))
-            .unwrap_or(usize::MAX)
-    });
     workspaces.into_iter().map(|w| w.id).collect()
-}
-
-/// Named workspace ids are allocated by the compositor; names survive restarts.
-pub fn workspace_key(workspace: &Workspace) -> String {
-    match workspace.kind() {
-        WorkspaceKind::Numbered => format!("number:{}", workspace.id.0),
-        WorkspaceKind::Named => format!("name:{}", workspace.name),
-        WorkspaceKind::Special => format!("special:{}", workspace.name),
-    }
 }
 
 fn plural(n: usize, noun: &str) -> String {

@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxkbcommon-dev libwayland-dev libvulkan-dev \
-            libfontconfig-dev libfreetype-dev libzstd-dev mesa-vulkan-drivers sway grim
+            libfontconfig-dev libfreetype-dev libzstd-dev mesa-vulkan-drivers sway grim lua5.4
 
       # rust-toolchain.toml selects the pinned toolchain and components.
       - name: Toolchain
@@ -35,6 +35,9 @@ jobs:
       - name: Test
         run: cargo test --locked --workspace
 
+      - name: Workspace swap fault injection
+        run: lua5.4 scripts/workspace-swap-lua-check.lua
+
       - name: Dependency inventory is current
         run: scripts/license-inventory.py --check
 
@@ -42,6 +45,7 @@ jobs:
         run: |
           cargo build --locked
           scripts/smoke-headless.sh target/debug/orbit smoke-output
+          bash scripts/workspace-reorder-check.sh target/debug/orbit smoke-output/workspace-swap
 
       - uses: actions/upload-artifact@v4
         if: always()

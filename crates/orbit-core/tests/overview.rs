@@ -504,102 +504,81 @@ fn every_pointer_action_has_a_keyboard_path() {
     assert_eq!(KEYBOARD_PATHS.len(), 8);
 }
 
-fn commit_order(overview: &mut Overview, intent: Option<Intent>) {
-    let Some(Intent::ReorderWorkspaces { order, .. }) = intent else {
-        panic!("expected reorder")
-    };
-    overview.workspace_order = order;
-}
-
-fn rail_labels(overview: &Overview, model: &Model) -> Vec<String> {
-    overview.tiles(model).into_iter().map(|t| t.label).collect()
-}
-
 #[test]
-fn reorder_inserts_at_start_middle_and_end_without_changing_workspace_contents() {
-    let (store, _) = store();
-    let model = store.model();
-    let mut overview = Overview::open(model, None);
+fn workspace_swap_keeps_layout_identity_and_roundtrips() {
+    let (mut store, epoch) = store();
+    let before = store.model().clone();
+    let mut overview = Overview::open(&before, None);
     let selected = overview.selected;
-    let intent =
-        overview.reorder_workspace(model, WorkspaceId(5), Dest::Existing(WorkspaceId(1)), false);
-    // A proposal (including a cancelled drag) has no effect until saved.
     assert_eq!(
-        rail_labels(&overview, model),
+        overview.reorder_workspace(
+            &before,
+            WorkspaceId(1),
+            Dest::Existing(WorkspaceId(2)),
+            false
+        ),
+        Some(Intent::SwapWorkspaces {
+            source: WorkspaceId(1),
+            target: WorkspaceId(2)
+        })
+    );
+    for (old, new) in [(1, 999), (2, 1), (999, 2)] {
+        let (old, new) = (WorkspaceId(old), WorkspaceId(new));
+        store
+            .on_event(epoch, Event::WorkspaceIdChanged { old, new })
+            .unwrap();
+        overview.workspace_id_changed(old, new);
+        overview.reconcile(store.model());
+    }
+    assert_eq!(overview.previewed, Some(WorkspaceId(2)));
+    assert_eq!(overview.selected, selected);
+    assert_eq!(store.model().monitors[0].active_workspace, WorkspaceId(2));
+    assert_eq!(
+        store.model().window(selected.unwrap()).unwrap().workspace,
+        WorkspaceId(2)
+    );
+    assert_eq!(store.model().windows_on(WorkspaceId(1)).count(), 1);
+    assert_eq!(
+        overview
+            .tiles(store.model())
+            .iter()
+            .map(|t| t.label.as_str())
+            .collect::<Vec<_>>(),
         ["1", "2", "5", "web", "scratch", "New"]
     );
-    commit_order(&mut overview, intent);
-    assert_eq!(
-        rail_labels(&overview, model),
-        ["5", "1", "2", "web", "scratch", "New"]
-    );
-    let intent = overview.reorder_workspace(
-        model,
-        WorkspaceId(1),
-        Dest::Existing(WorkspaceId(-1337)),
-        true,
-    );
-    commit_order(&mut overview, intent);
-    assert_eq!(
-        rail_labels(&overview, model),
-        ["5", "2", "web", "1", "scratch", "New"]
-    );
-    let intent = overview.reorder_workspace(model, WorkspaceId(5), Dest::NewNumbered(6), false);
-    commit_order(&mut overview, intent);
-    assert_eq!(
-        rail_labels(&overview, model),
-        ["2", "web", "1", "scratch", "5", "New"]
-    );
-    assert_eq!(overview.previewed, Some(WorkspaceId(1)));
-    assert_eq!(overview.selected, selected);
-    assert_eq!(model.windows_on(WorkspaceId(1)).count(), 2);
-    assert_eq!(model.active_window, selected);
+    for (old, new) in [(2, 999), (1, 2), (999, 1)] {
+        store
+            .on_event(
+                epoch,
+                Event::WorkspaceIdChanged {
+                    old: WorkspaceId(old),
+                    new: WorkspaceId(new),
+                },
+            )
+            .unwrap();
+    }
+    assert_eq!(store.model(), &before);
 }
 
 #[test]
-fn saved_order_survives_reopen_missing_workspaces_and_reallocated_named_ids() {
+fn workspace_swap_rejects_named_new_and_inflight_targets() {
     let (store, _) = store();
-    let mut model = store.model().clone();
-    let mut overview = Overview::open(&model, None);
-    overview.workspace_order = vec![
-        "name:web".into(),
-        "number:2".into(),
-        "number:2".into(),
-        "number:8".into(),
-        "special:special:scratch".into(),
-    ];
-    model.workspaces.remove(&WorkspaceId(-1337));
-    model
-        .workspaces
-        .insert(WorkspaceId(-1338), ws(-1338, "web"));
-    model.workspaces.insert(WorkspaceId(3), ws(3, "3"));
-    overview.hide_special = true;
+    let model = store.model();
+    let mut o = Overview::open(model, None);
+    for dest in [
+        Dest::Existing(WorkspaceId(-1337)),
+        Dest::Existing(WorkspaceId(-98)),
+        Dest::NewNumbered(6),
+    ] {
+        assert_eq!(
+            o.reorder_workspace(model, WorkspaceId(1), dest, false),
+            None
+        );
+    }
+    o.swapping = true;
     assert_eq!(
-        rail_labels(&overview, &model),
-        ["web", "2", "1", "3", "5", "New"]
-    );
-    let intent = overview.reorder_workspace(
-        &model,
-        WorkspaceId(5),
-        Dest::Existing(WorkspaceId(-1338)),
-        false,
-    );
-    commit_order(&mut overview, intent);
-    assert!(overview.workspace_order.contains(&"number:8".into()));
-    assert!(
-        overview
-            .workspace_order
-            .contains(&"special:special:scratch".into())
-    );
-    let mut settings = Settings::default();
-    settings.layout.workspace_order = overview.workspace_order;
-    let decoded = Settings::parse(&settings.to_toml()).unwrap();
-    model.workspaces.insert(WorkspaceId(8), ws(8, "8"));
-    let mut reopened = Overview::open(&model, None);
-    reopened.workspace_order = decoded.layout.workspace_order;
-    assert_eq!(
-        rail_labels(&reopened, &model),
-        ["5", "web", "2", "8", "scratch", "1", "3", "New"]
+        o.reorder_workspace(model, WorkspaceId(1), Dest::Existing(WorkspaceId(2)), true),
+        None
     );
 }
 
@@ -616,7 +595,10 @@ fn reorder_rejects_invalid_filtered_and_no_op_drops_and_keyboard_edges() {
     );
     assert_eq!(
         overview.reorder_workspace(model, WorkspaceId(1), two, false),
-        None
+        Some(Intent::SwapWorkspaces {
+            source: WorkspaceId(1),
+            target: WorkspaceId(2)
+        })
     );
     assert_eq!(
         overview.reorder_workspace(model, WorkspaceId(99), one, true),

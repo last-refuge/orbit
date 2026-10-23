@@ -4,6 +4,21 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.0-alpha.7] - 2026-10-23
+
+### Fixed
+
+- Dragging a numbered workspace now swaps its actual contents with the target
+  workspace. Hyprland keeps the workspace objects and their tiling trees, floating
+  geometry, fullscreen state, and monitor assignments intact. Swapping back
+  restores the original workspace numbers.
+- The rail stays in numeric order; the visual-only order saved by alpha.6 is
+  ignored. The target tile is highlighted, and Ctrl+Shift+Left/Right performs
+  the same swap with a neighboring numbered workspace.
+- Swaps validate current window membership, roll back refused ID changes, and
+  verify the compositor snapshot before reporting success. Named/special/New
+  targets are excluded; Hyprland's Lua `workspace.change_id` support is required.
+
 ## [0.1.0-alpha.6] - 2026-10-23
 
 ### Added

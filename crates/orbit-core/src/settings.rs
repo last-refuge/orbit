@@ -333,7 +333,7 @@ impl RailPosition {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Layout {
-    /// Durable workspace keys in Orbit's custom rail order; empty uses the default.
+    /// Legacy visual ordering from alpha.6. Retained for config compatibility; ignored.
     pub workspace_order: Vec<String>,
     pub columns: Columns,
     pub titles: Titles,
