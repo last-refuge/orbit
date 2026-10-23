@@ -29,12 +29,12 @@ use std::{
 };
 
 use gpui::{
-    App, Bounds, BoxShadow, Context, DragMoveEvent, ElementInputHandler, Entity,
+    AnimationExt, App, Bounds, BoxShadow, Context, DragMoveEvent, ElementInputHandler, Entity,
     EntityInputHandler, FocusHandle, FontWeight, Hsla, KeyBinding, Keystroke, Modifiers,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ObjectFit, Pixels, PlatformInput,
-    Point, RenderImage, Rgba, Role, SharedString, Size, Subscription, UTF16Selection, Window,
-    accesskit, actions, canvas, div, ease_out_quint, img, linear_color_stop, linear_gradient,
-    point, prelude::*, px,
+    Point, RenderImage, Rgba, Role, SharedString, Size, SpringAnimation, SpringConfig,
+    SpringPlayback, Subscription, UTF16Selection, Window, accesskit, actions, canvas, div,
+    ease_out_quint, img, linear_color_stop, linear_gradient, point, prelude::*, px,
 };
 use orbit_core::{Card, Dest, Intent, Model, Region, Tile, Tone};
 
@@ -517,6 +517,21 @@ impl Render for Ghost {
     }
 }
 
+const WORKSPACE_HOP_PAD: f32 = 28.;
+
+/// A reversible arc with a smaller rebound when the horizontal spring overshoots.
+fn workspace_hop(offset: f32, span: f32) -> f32 {
+    if span.abs() < 1. {
+        return 0.;
+    }
+    let progress = offset / span;
+    if (0. ..=1.).contains(&progress) {
+        -22. * (std::f32::consts::PI * progress).sin()
+    } else {
+        -((progress - progress.clamp(0., 1.)).abs() * 70.).min(8.)
+    }
+}
+
 /// A drawn preview: its bounds, the device size of the texture it shows,
 /// and the window's real aspect (w / h) if known.
 type DrawnPreview = (Bounds<Pixels>, (u32, u32), Option<f32>);
@@ -593,6 +608,7 @@ impl Render for WorkspaceGhost {
 struct Layout {
     cards: HashMap<u64, Bounds<Pixels>>,
     tiles: HashMap<Dest, Bounds<Pixels>>,
+    workspace_offsets: HashMap<Dest, (f32, f32)>,
     /// Each drawn preview image: its bounds, the device size of the
     /// texture it shows, and the window's real aspect (w / h) if known.
     previews: HashMap<u64, DrawnPreview>,
@@ -626,6 +642,8 @@ pub struct OverviewView {
     workspace_drop: Option<(Dest, bool)>,
     rail_drag_first: Option<usize>,
     workspace_drag_generation: u64,
+    workspace_motion_generation: u64,
+    workspace_spans: HashMap<Dest, f32>,
     _observe: Subscription,
 }
 
@@ -669,6 +687,8 @@ impl OverviewView {
             workspace_drop: None,
             rail_drag_first: None,
             workspace_drag_generation: 0,
+            workspace_motion_generation: 0,
+            workspace_spans: HashMap::new(),
             _observe: observe,
         }
     }
@@ -769,10 +789,35 @@ impl OverviewView {
     }
 
     fn clear_workspace_drag(&mut self, cx: &mut Context<Self>) {
+        // Keep spring identities and spans so a cancelled preview can hop home.
         self.workspace_drag_generation += 1;
         self.workspace_drag = None;
         self.workspace_drop = None;
         self.rail_drag_first = None;
+        cx.notify();
+    }
+
+    fn set_workspace_drop(&mut self, target: Option<(Dest, bool)>, cx: &mut Context<Self>) {
+        if target == self.workspace_drop {
+            return;
+        }
+        if let (Some(dragged), Some((dest, _))) = (&self.workspace_drag, target) {
+            let desk = self.desk.read(cx);
+            if let Some(o) = desk.overview() {
+                let tiles = o.tiles(desk.store().model());
+                let source = tiles
+                    .iter()
+                    .position(|t| t.dest == Dest::Existing(dragged.id));
+                let bumped = tiles.iter().position(|t| t.dest == dest);
+                if let (Some(source), Some(bumped)) = (source, bumped) {
+                    self.workspace_spans.insert(
+                        dest,
+                        (source as f32 - bumped as f32) * (THUMB_WIDTH + THUMB_GAP),
+                    );
+                }
+            }
+        }
+        self.workspace_drop = target;
         cx.notify();
     }
 
@@ -854,14 +899,11 @@ impl OverviewView {
                         };
                         if next != first {
                             this.rail_drag_first = Some(next);
-                            this.workspace_drop = None;
+                            this.set_workspace_drop(None, cx);
                             cx.notify();
                         } else if let Some(dragged) = &this.workspace_drag {
                             let target = this.workspace_target(dragged, position, cx);
-                            if target != this.workspace_drop {
-                                this.workspace_drop = target;
-                                cx.notify();
-                            }
+                            this.set_workspace_drop(target, cx);
                         }
                     }
                     true
@@ -1094,6 +1136,15 @@ impl OverviewView {
                 if command == "drag-workspace" { release_drag(window, cx, to, Modifiers::default()); }
                 Ok("ok".into())
             }
+            (Some("move-workspace-drag"), Some(target), None, None) => {
+                if view.read(cx).workspace_drag.is_none() { return Err("no workspace drag".into()); }
+                let to = if target == "outside" {
+                    let m = view.read(cx).layout.borrow().metrics.ok_or("not laid out")?;
+                    point(px(m.grid.x + 10.), px(m.grid.y + 10.))
+                } else { view.read(cx).tile_center(target, cx)? };
+                move_to(window, cx, to, Some(MouseButton::Left), Modifiers::default());
+                Ok("ok".into())
+            }
             (Some("drop-workspace"), None, None, None) => {
                 release_drag(window, cx, window.mouse_position(), Modifiers::default());
                 Ok("ok".into())
@@ -1103,7 +1154,7 @@ impl OverviewView {
             _ => Err(
                 "usage: key K[,K…] | type TEXT | compose TEXT | commit TEXT | click 0xADDR \
                       | click-workspace NAME | click-search | drag 0xADDR NAME [follow] | a11y \
-                      | drag-workspace SOURCE TARGET [before|after] | start-workspace-drag SOURCE TARGET [before|after] | drop-workspace | layout"
+                      | drag-workspace SOURCE TARGET [before|after] | start-workspace-drag SOURCE TARGET [before|after] | move-workspace-drag TARGET | drop-workspace | layout"
                     .into(),
             ),
         }
@@ -1162,6 +1213,7 @@ impl OverviewView {
             "workspace_dragging": self.workspace_drag.is_some(),
             "workspace_drop": self.workspace_drop.map(|(dest, after)| serde_json::json!({ "destination": format!("{dest:?}"), "after": after })),
             "rail_drag_first": self.rail_drag_first,
+            "workspace_offsets": layout.workspace_offsets.iter().map(|(dest, (x,y))| json!({"destination":format!("{dest:?}"),"x":x,"y":y})).collect::<Vec<_>>(),
             "previews": layout.previews.iter().map(|(address, (b, size, aspect))| json!({
                 "address": format!("{address:#x}"),
                 "image": [size.0, size.1],
@@ -1424,40 +1476,38 @@ impl OverviewView {
             tile.label.clone()
         };
         let caption = (tile.focused && keyboard && !tile.is_new()).then(|| tile.caption());
-        div()
-            .id(SharedString::from(format!("tile-{dest:?}")))
-            .role(Role::Button)
-            .aria_label(tile.accessible_label())
-            .aria_selected(if moving { tile.focused } else { tile.previewed })
-            .aria_position_in_set(at + 1)
-            .aria_size_of_set(of)
-            .when(tile.focused, |d| d.aria_active_descendant())
-            .absolute()
-            .left(px(rect.x))
-            .top(px(rect.y))
+        let span = self.workspace_spans.get(&dest).copied().unwrap_or(0.);
+        let target_x = if swap_target.is_some() { span } else { 0. };
+        let reduced = Look::get(cx).reduced_motion;
+        let motion_layout = self.layout.clone();
+        let spring = SpringAnimation::new(SpringConfig::new(430., 29., 1.))
+            .to(target_x)
+            .from(0.)
+            .with_epsilon(0.1)
+            .playback(if reduced {
+                SpringPlayback::Completed
+            } else {
+                SpringPlayback::Running
+            });
+        let visual = div()
+            .relative()
             .w(px(rect.w))
             .h(px(rect.h))
             .flex()
             .flex_col()
             .items_center()
-            .cursor_pointer()
             .when(
                 self.workspace_drag
                     .as_ref()
                     .is_some_and(|d| Dest::Existing(d.id) == dest),
-                |d| d.opacity(0.45),
-            )
-            .when_some(dragged, |d, dragged| {
-                d.on_drag(dragged, move |dragged, offset, window, cx| {
-                    let _ = weak.update(cx, |this, cx| {
-                        this.start_workspace_drag(dragged.clone(), first, window, cx)
-                    });
-                    cx.new(|_| WorkspaceGhost {
-                        dragged: dragged.clone(),
-                        offset,
+                |d| {
+                    d.opacity(if self.workspace_drop.is_some() {
+                        0.0
+                    } else {
+                        0.25
                     })
-                })
-            })
+                },
+            )
             .child(div().w(px(THUMB_WIDTH)).h(px(THUMB_HEIGHT)).child(ring_box(
                 t,
                 m,
@@ -1502,6 +1552,50 @@ impl OverviewView {
                     .truncate()
                     .children(caption),
             )
+            .with_spring(
+                SharedString::from(format!(
+                    "workspace-hop-{}-{dest:?}",
+                    self.workspace_motion_generation
+                )),
+                spring,
+                move |d, x| {
+                    let y = if reduced { 0. } else { workspace_hop(x, span) };
+                    motion_layout
+                        .borrow_mut()
+                        .workspace_offsets
+                        .insert(dest, (x, y));
+                    d.left(px(x)).top(px(y))
+                },
+            );
+        div()
+            .id(SharedString::from(format!("tile-{dest:?}")))
+            .role(Role::Button)
+            .aria_label(tile.accessible_label())
+            .aria_selected(if moving { tile.focused } else { tile.previewed })
+            .aria_position_in_set(at + 1)
+            .aria_size_of_set(of)
+            .when(tile.focused, |d| d.aria_active_descendant())
+            .absolute()
+            .left(px(rect.x))
+            .top(px(rect.y))
+            .w(px(rect.w))
+            .h(px(rect.h))
+            .flex()
+            .flex_col()
+            .items_center()
+            .cursor_pointer()
+            .when_some(dragged, |d, dragged| {
+                d.on_drag(dragged, move |dragged, offset, window, cx| {
+                    let _ = weak.update(cx, |this, cx| {
+                        this.start_workspace_drag(dragged.clone(), first, window, cx)
+                    });
+                    cx.new(|_| WorkspaceGhost {
+                        dragged: dragged.clone(),
+                        offset,
+                    })
+                })
+            })
+            .child(visual)
             .drag_over::<DraggedWindow>(move |style, _, _, _| {
                 style.bg(t.selection.alpha(0.25)).rounded(px(14.))
             })
@@ -2292,6 +2386,7 @@ impl Render for OverviewView {
             l.hints = self.show_hints;
             l.cards.clear();
             l.tiles.clear();
+            l.workspace_offsets.clear();
             l.previews.clear();
         }
         let tiles = o.tiles(model);
@@ -2514,24 +2609,21 @@ impl Render for OverviewView {
             })
             .absolute()
             .left(px(m.rail.x))
-            .top(px(m.rail.y))
+            .top(px(m.rail.y - WORKSPACE_HOP_PAD))
             .w(px(m.rail.w))
-            .h(px(m.rail.h))
+            .h(px(m.rail.h + WORKSPACE_HOP_PAD))
             .overflow_hidden()
-            .on_drag_move(
-                cx.listener(|this, event: &DragMoveEvent<DraggedWorkspace>, _, cx| {
-                    let target = this.workspace_target(event.drag(cx), event.event.position, cx);
-                    if target != this.workspace_drop {
-                        this.workspace_drop = target;
-                        cx.notify();
-                    }
-                }),
-            )
             .on_drop(cx.listener(|this, dragged: &DraggedWorkspace, window, cx| {
                 let target = this.workspace_target(dragged, window.mouse_position(), cx);
                 let intent = target.and_then(|(dest, after)| {
                     this.with_overview(cx, |o, m| o.reorder_workspace(m, dragged.id, dest, after))
                 });
+                if intent.is_some() {
+                    // The compositor exchanges the contents under these fixed slots.
+                    // Discard preview springs instead of animating the new contents back.
+                    this.workspace_motion_generation += 1;
+                    this.workspace_spans.clear();
+                }
                 this.clear_workspace_drag(cx);
                 this.perform(intent, window, cx);
             }))
@@ -2545,7 +2637,7 @@ impl Render for OverviewView {
                         let rect = m.tile_rect(i, first);
                         let rect = Rect {
                             x: rect.x - m.rail.x,
-                            y: 0.,
+                            y: WORKSPACE_HOP_PAD,
                             ..rect
                         };
                         self.tile(
@@ -2875,6 +2967,12 @@ impl Render for OverviewView {
             .on_action(cx.listener(Self::delete))
             .on_action(cx.listener(Self::toggle_hints))
             .on_action(cx.listener(Self::open_settings))
+            .on_drag_move(
+                cx.listener(|this, event: &DragMoveEvent<DraggedWorkspace>, _, cx| {
+                    let target = this.workspace_target(event.drag(cx), event.event.position, cx);
+                    this.set_workspace_drop(target, cx);
+                }),
+            )
             .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
                 this.pointer_moved(event.position, event.pressed_button.is_some(), cx);
             }))

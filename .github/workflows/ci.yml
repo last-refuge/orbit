@@ -46,6 +46,7 @@ jobs:
           cargo build --locked
           scripts/smoke-headless.sh target/debug/orbit smoke-output
           bash scripts/workspace-reorder-check.sh target/debug/orbit smoke-output/workspace-swap
+          ORBIT_TEST_REDUCED_MOTION=1 bash scripts/workspace-reorder-check.sh target/debug/orbit smoke-output/workspace-swap-reduced
 
       - uses: actions/upload-artifact@v4
         if: always()

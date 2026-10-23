@@ -1,4 +1,28 @@
-# Workspace swap validation — alpha.7
+# Workspace swap validation
+
+## Animation preview — alpha.8
+
+The release build was exercised in a private headless sway with fake Hyprland
+IPC, in both normal and reduced-motion modes. The native GPUI checks cover:
+
+- Bumping a target into the source slot while keeping the pointer still; the
+  target remains stable as the thumbnail moves.
+- Moving back to the source, leaving the rail, and rapidly changing direction;
+  all displaced thumbnails return to their original slots.
+- No compositor mutation during any of those previews.
+- Drop, swap back, keyboard parity, Escape/outside-drop cancellation, edge
+  scrolling, restart, and the individual-window drag path.
+
+Screenshots of outbound, settled, and returned thumbnails were inspected for
+placement and clipping. Reduced-motion mode reaches the same preview positions
+without vertical motion. Both modes run in CI via
+`scripts/workspace-reorder-check.sh`.
+
+This validates the native rendering and input path against fixture data. The
+compositor swap implementation is unchanged from alpha.7; its real Hyprland
+verification is recorded below.
+
+## Compositor swaps — alpha.7
 
 Verified on Hyprland 0.56.2 with the release binary and owned fixture windows
 inside a private compositor. No user desktop windows were used.

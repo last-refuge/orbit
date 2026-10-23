@@ -173,6 +173,11 @@ its tiling tree, floating geometry, fullscreen state, and monitor assignment.
 Swapping back restores the original workspace numbers. The rail stays in numeric
 order and Hyprland's numbered shortcuts follow the new assignments.
 
+While dragging, the workspace under the pointer hops into the vacated spot with
+a small spring bounce. Move back or away and it springs home. This previews the
+swap without moving any windows until you drop; reduced-motion mode snaps the
+preview into place.
+
 This requires Hyprland 0.56+ with `workspace.change_id`; named and special
 workspaces and the New tile are not swap targets. Search and the window move
 menu must be closed. Workspace-specific compositor rules still apply to the

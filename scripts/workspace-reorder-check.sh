@@ -55,7 +55,9 @@ wait_for() {
 }
 order_is() { wait_for "[.overview.rail[].label] == $1 and .visible"; }
 start() {
-    RUST_LOG=warn "$orbit" daemon --test-hooks >> "$out/orbit.log" 2>&1 &
+    local motion_args=()
+    [[ ${ORBIT_TEST_REDUCED_MOTION:-0} != 1 ]] || motion_args+=(--reduced-motion)
+    RUST_LOG=warn "$orbit" daemon --test-hooks "${motion_args[@]}" >> "$out/orbit.log" 2>&1 &
     daemon_pid=$!
     wait_for '.sync == "Live"'
     "$orbit" show >/dev/null
@@ -68,6 +70,43 @@ start
 initial='["1","91","92","93","orbitfx","New"]'
 order_is "$initial"
 python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-before.json"
+layout_wait() {
+    for _ in $(seq 60); do
+        "$orbit" drive layout > "$out/layout.json"
+        jq -e "$1" "$out/layout.json" >/dev/null && return
+        sleep .025
+    done
+    cat "$out/layout.json" >&2; exit 1
+}
+# Hold the pointer still after bumping: animated visuals must not change the target.
+drive start-workspace-drag 93 91 before
+layout_wait '.workspace_offsets[] | select(.destination == "Existing(WorkspaceId(91))") | .x > 5'
+shot bump-outbound
+layout_wait '[.workspace_offsets[] | select(.destination == "Existing(WorkspaceId(91))")][0].x as $x | ($x - 2*(.tile[0]+.tile_gap) | fabs) < 0.2'
+"$orbit" drive layout | jq -e '.workspace_drop.destination == "Existing(WorkspaceId(91))"' >/dev/null
+if [[ ${ORBIT_TEST_REDUCED_MOTION:-0} == 1 ]]; then
+    jq -e 'all(.workspace_offsets[]; .y == 0)' "$out/layout.json" >/dev/null
+fi
+shot bump-settled
+drive move-workspace-drag 93
+layout_wait '.workspace_drop == null and all(.workspace_offsets[]; (.x | fabs) < 0.2 and (.y | fabs) < 0.2)'
+shot bump-returned
+# Reverse again before the first spring settles; then cancel the gesture.
+drive move-workspace-drag 91
+sleep .05
+drive move-workspace-drag 92
+sleep .05
+drive move-workspace-drag outside
+layout_wait '.workspace_drop == null and all(.workspace_offsets[]; (.x | fabs) < 0.2 and (.y | fabs) < 0.2)'
+drive move-workspace-drag 91
+sleep .05
+drive move-workspace-drag 93
+layout_wait '.workspace_drop == null and all(.workspace_offsets[]; (.x | fabs) < 0.2 and (.y | fabs) < 0.2)'
+drive drop-workspace
+python3 "$here/scripts/fake-hyprland.py" ctl -j clients > "$out/clients-preview.json"
+cmp "$out/clients-before.json" "$out/clients-preview.json"
+printf 'PASS bump preview, return, rail exit, rapid reversal, fixed drop targets; no compositor mutation before drop\n'
+
 drive start-workspace-drag 93 91 before
 sleep .15
 "$orbit" drive layout | jq -e '.workspace_dragging and .workspace_drop != null' >/dev/null

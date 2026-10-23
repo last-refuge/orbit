@@ -4,6 +4,16 @@ All notable changes to Orbit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.0-alpha.8] - 2026-10-23
+
+### Added
+
+- Workspace swap previews now hop and bounce: hovering over another workspace
+  pushes its thumbnail into the dragged workspace's spot. Moving back or away
+  springs it home, including when you reverse direction mid-animation.
+- Drop targets stay fixed while thumbnails move. Windows are swapped only when
+  you drop, and reduced-motion mode shows the preview without animation.
+
 ## [0.1.0-alpha.7] - 2026-10-23
 
 ### Fixed
